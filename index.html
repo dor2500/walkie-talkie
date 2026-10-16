@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090c12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>ווקי טוקי טקטי - שיחות קשר מיידיות</title>
+  <title>ווקי טוקי טקטי - שיחות קשר ישירות</title>
 
   <!-- Google Fonts: Rubik & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,7 +101,7 @@
     .rssi-bars {
       display: flex;
       align-items: flex-end;
-      gap: 2px;
+      gap: 2.5px;
       height: 14px;
     }
 
@@ -305,16 +305,16 @@
       margin: 4px 0;
     }
 
-    /* Connection status badge (2-person detector) */
+    /* Connection radar status */
     .connect-radar {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 8px 12px;
+      padding: 10px 14px;
       border-radius: 10px;
-      font-size: 0.82rem;
-      font-weight: 700;
+      font-size: 0.88rem;
+      font-weight: 800;
       margin-top: 8px;
       transition: all 0.3s;
     }
@@ -324,24 +324,24 @@
       border: 1px dashed rgba(245, 158, 11, 0.4);
     }
     .connect-radar.paired {
-      background: rgba(16, 185, 129, 0.2);
+      background: rgba(16, 185, 129, 0.25);
       color: #34d399;
-      border: 1px solid var(--green);
-      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+      border: 1.5px solid var(--green);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
       animation: pulseGlow 1.8s infinite;
     }
 
     @keyframes pulseGlow {
       0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
-      50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+      50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.7); }
     }
 
     .pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       background: currentColor;
-      box-shadow: 0 0 8px currentColor;
+      box-shadow: 0 0 10px currentColor;
     }
 
     /* QR Box */
@@ -392,7 +392,7 @@
       border-color: rgba(16, 185, 129, 0.4);
     }
 
-    /* Talking banner */
+    /* Voice status box */
     .voice-status-box {
       border-radius: 10px;
       padding: 10px 12px;
@@ -698,6 +698,21 @@
       from { opacity: 0; transform: translate(-50%, 15px); }
       to { opacity: 1; transform: translate(-50%, 0); }
     }
+    /* Modal QR overlay */
+    .qr-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+    .qr-modal-overlay.hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -732,7 +747,7 @@
       <div class="radio-card text-center" style="margin: auto 0; text-align: center;">
         <div style="font-size: 3rem; margin-bottom: 6px;">📻</div>
         <h1 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 4px;">ווקי-טוקי טקטי</h1>
-        <p style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 20px;">רשת קשר P2P ישירה ללא שרתים מרכזיים</p>
+        <p style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 20px;">רשת קשר P2P ישירה ומסונכרנת בזמן אמת</p>
 
         <input 
           id="myName" 
@@ -744,7 +759,7 @@
           onkeydown="if(event.key==='Enter')goWelcome()"
         />
 
-        <button onclick="goWelcome()" class="btn-action btn-amber">
+        <button type="button" onclick="goWelcome()" class="btn-action btn-amber">
           <span>המשך לרשת הקשר ➡️</span>
         </button>
       </div>
@@ -756,7 +771,7 @@
         <p style="color: #94a3b8; font-size: 0.9rem;">שלום <b id="helloName" style="color: var(--amber); font-size: 1.1rem;"></b> 👋</p>
         <h2 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px;">בחר פעולה:</h2>
 
-        <button onclick="goHost()" class="role-btn">
+        <button type="button" onclick="goHost()" class="role-btn">
           <span class="role-icon">👑</span>
           <div class="role-info">
             <strong>אני מארח - יוצר חדר</strong>
@@ -765,7 +780,7 @@
           <span style="font-size: 1.2rem; margin-right: auto; color: #94a3b8;">←</span>
         </button>
 
-        <button onclick="goJoin()" class="role-btn">
+        <button type="button" onclick="goJoin()" class="role-btn">
           <span class="role-icon">🚪</span>
           <div class="role-info">
             <strong>הצטרפות לקבוצה</strong>
@@ -774,7 +789,7 @@
           <span style="font-size: 1.2rem; margin-right: auto; color: #94a3b8;">←</span>
         </button>
 
-        <button onclick="goBackToName()" class="btn-action btn-dark" style="margin-top: 18px; font-size: 0.9rem;">
+        <button type="button" onclick="goBackToName()" class="btn-action btn-dark" style="margin-top: 18px; font-size: 0.9rem;">
           החלף שם משתמש
         </button>
       </div>
@@ -792,10 +807,10 @@
           <p style="font-size: 0.72rem; color: #64748b; font-family: var(--font-mono); text-align: center;">קוד החדר שלך (CHANNEL CODE):</p>
           <div id="roomCode" class="lcd-code">------</div>
           
-          <!-- LIVE 2-PERSON CONNECTION DETECTOR -->
+          <!-- LIVE 2-PERSON SYNCHRONIZATION RADAR -->
           <div id="hostPartnerStatus" class="connect-radar waiting">
             <span class="pulse-dot"></span>
-            <span id="hostPartnerText">ממתין לשותף שיצטרף לקשר... 📡</span>
+            <span id="hostPartnerText">ממתין לשותף שיצטרף לקשר... 📡 (0 מחוברים)</span>
           </div>
         </div>
 
@@ -807,15 +822,15 @@
           החבר יכול לסרוק במצלמה או להקליד את הקוד
         </p>
 
-        <button onclick="shareLink()" class="btn-action btn-dark" style="margin-top: 4px;">
+        <button type="button" onclick="shareLink()" class="btn-action btn-dark" style="margin-top: 4px;">
           📤 שתף קישור ישיר בוואטסאפ
         </button>
 
-        <button onclick="goTalk()" id="btnHostEnter" class="btn-action btn-green" style="margin-top: 10px;">
+        <button type="button" onclick="goTalk()" id="btnHostEnter" class="btn-action btn-green" style="margin-top: 10px;">
           ✅ כנס לעמדת השידור
         </button>
 
-        <button onclick="goBackToWelcome()" class="btn-action btn-dark" style="margin-top: 6px; font-size: 0.85rem; padding: 10px;">
+        <button type="button" onclick="goBackToWelcome()" class="btn-action btn-dark" style="margin-top: 6px; font-size: 0.85rem; padding: 10px;">
           חזרה לתפריט
         </button>
       </div>
@@ -829,13 +844,13 @@
           <span id="jName" style="font-size: 0.85rem; color: #cbd5e1;"></span>
         </div>
 
-        <button onclick="toggleScanner()" class="btn-action btn-amber" style="margin-top: 4px;">
+        <button type="button" onclick="toggleScanner()" class="btn-action btn-amber" style="margin-top: 4px;">
           📷 סרוק ברקוד במצלמה
         </button>
 
         <div id="readerWrapper" class="hidden" style="margin-top: 10px; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--cyan);">
           <div id="reader"></div>
-          <button onclick="stopScanner()" class="btn-action btn-dark" style="margin: 6px auto; padding: 8px; width: 95%;">סגור מצלמה ✕</button>
+          <button type="button" onclick="stopScanner()" class="btn-action btn-dark" style="margin: 6px auto; padding: 8px; width: 95%;">סגור מצלמה ✕</button>
         </div>
 
         <div style="display: flex; align-items: center; text-align: center; margin: 16px 0; color: #64748b; font-size: 0.78rem;">
@@ -853,11 +868,15 @@
           onkeydown="if(event.key==='Enter')doJoin()"
         />
 
-        <button onclick="doJoin()" class="btn-action btn-green" style="margin-top: 14px;">
+        <div id="joinStatusText" style="text-align: center; font-size: 0.85rem; color: var(--amber); margin-top: 10px;" class="hidden">
+          מתחבר לקשר... ⏳
+        </div>
+
+        <button type="button" id="joinBtn" onclick="doJoin()" class="btn-action btn-green" style="margin-top: 14px;">
           הצטרף לערוץ 🚀
         </button>
 
-        <button onclick="goBackToWelcome()" class="btn-action btn-dark" style="margin-top: 8px; font-size: 0.85rem; padding: 10px;">
+        <button type="button" onclick="goBackToWelcome()" class="btn-action btn-dark" style="margin-top: 8px; font-size: 0.85rem; padding: 10px;">
           חזרה לתפריט
         </button>
       </div>
@@ -870,17 +889,17 @@
         <!-- LCD HUD Display -->
         <div class="talk-hud">
           <div class="hud-meta-row">
-            <span class="hud-pill active-channel">חדר: <b id="cMini">------</b></span>
+            <span class="hud-pill active-channel">ערוץ: <b id="cMini">------</b></span>
             <span class="hud-pill">אתה: <b id="myShow">משתמש</b></span>
             <span class="hud-pill paired-count" id="liveCountBadge">
               👥 <span id="cnt">1</span> מחוברים
             </span>
           </div>
 
-          <!-- Dynamic 2-Person Connection Banner -->
+          <!-- Dynamic 2-Person Synchronization Banner -->
           <div id="partnerBanner" class="connect-radar waiting" style="margin-bottom: 8px;">
             <span class="pulse-dot"></span>
-            <span id="partnerStatusText">ממתין לשותף שיצטרף לקשר...</span>
+            <span id="partnerStatusText">ממתין לשותף שיצטרף לקוד... 📡</span>
           </div>
 
           <!-- Voice Transmission Status -->
@@ -937,11 +956,11 @@
         <!-- Connected Peers List -->
         <div class="peers-box">
           <div class="peers-box-title">
-            <span>משתתפים בערוץ הקשר (<span id="peerListCount">1</span>)</span>
+            <span>משתתפים בערוץ (<span id="peerListCount">1</span>)</span>
             <span id="signalDot" style="color: var(--amber);">● ממתין לשותף</span>
           </div>
           <div id="peersList">
-            <!-- Dynamic peers -->
+            <!-- Dynamic peers populated live -->
           </div>
         </div>
 
@@ -953,7 +972,7 @@
           </button>
           <button class="btn-foot" onclick="showQrModal()">
             <span>📷</span>
-            <span>הצג QR</span>
+            <span>קוד חדר</span>
           </button>
           <button class="btn-foot danger" onclick="location.reload()">
             <span>⚫</span>
@@ -964,21 +983,59 @@
       </div>
     </div>
 
-    <!-- Hidden Audio Streams Rack (Must NOT be display:none for iOS/Android playback!) -->
+    <!-- Hidden Audio Streams Rack (Must NOT be display:none for iOS/Android audio playback!) -->
     <div id="audios" style="position: fixed; top: -9999px; left: -9999px; width: 1px; height: 1px; opacity: 0.001; pointer-events: none;"></div>
 
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Dedicated QR & Share Modal Overlay -->
+    <div id="qrModal" class="qr-modal-overlay hidden">
+      <div class="radio-card text-center" style="max-width: 330px; width: 92%; margin: auto; text-align: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 style="color: var(--amber); font-size: 1.1rem; font-weight: 800; margin: 0;">📷 קוד ערוץ: <span id="modalCodeText">------</span></h3>
+          <button type="button" onclick="closeQrModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer; padding: 0 4px;">✕</button>
+        </div>
+        <div class="qr-frame" style="margin: 12px auto; display: flex; justify-content: center;">
+          <div id="modalQrCode"></div>
+        </div>
+        <p style="font-size: 0.78rem; color: #94a3b8; margin: 6px 0 12px;">החבר יכול לסרוק במצלמה או להזין את הקוד</p>
+        <button type="button" onclick="shareLink()" class="btn-action btn-amber" style="margin-top: 4px;">
+          📤 שתף קישור בוואטסאפ
+        </button>
+        <button type="button" onclick="closeQrModal()" class="btn-action btn-dark" style="margin-top: 8px; font-size: 0.85rem; padding: 10px;">
+          סגור ✕
+        </button>
+      </div>
+    </div>
+
   </div>
 
   <script>
-    // State Variables (Direct, reliable WebRTC architecture)
+    // Bulletproof Multi-STUN Configuration
+    const PEER_OPTS = {
+      debug: 1,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          { urls: 'stun:stun.services.mozilla.com' },
+          { urls: 'stun:stun.cloudflare.com:3478' }
+        ],
+        iceCandidatePoolSize: 10
+      }
+    };
+
+    // State Variables
     let myName = '';
     let peer = null;
     let myStream = null;
     let conns = {};          // peerId -> DataConnection
     let names = {};          // peerId -> string
+    let calls = {};          // peerId -> MediaConnection
     let roomCode = '';
     let roomId = '';
     let talking = false;
@@ -986,8 +1043,11 @@
     let soundFx = true;
     let speakerMuted = false;
     let scanner = null;
+    let isHost = false;
+    let wasPaired = false;
+    let joinAttemptTimer = null;
 
-    // Web Audio Synthesizer context & visualizer
+    // Web Audio Synthesizer & Visualizer
     let audioCtx = null;
     let analyser = null;
     let animId = null;
@@ -1002,14 +1062,37 @@
         document.getElementById('myName').value = saved;
       }
 
-      // Check URL parameters for direct join (?join=walkie-ABC123&code=ABC123)
+      // Check URL parameters for direct invite link (?code=ABC123 or ?join=walkie-ABC123)
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('code') || params.get('room');
+      const code = params.get('code') || params.get('join')?.replace('walkie-', '') || '';
       if (code) {
-        document.getElementById('codeInput').value = code.trim().toUpperCase();
+        const cleanCode = code.trim().toUpperCase();
+        document.getElementById('codeInput').value = cleanCode;
+        if (saved) {
+          myName = saved;
+          document.getElementById('helloName').textContent = myName;
+          document.getElementById('hName').textContent = myName;
+          document.getElementById('jName').textContent = myName;
+          document.getElementById('myShow').textContent = myName;
+          getAudioContext();
+          doJoin();
+        } else {
+          const nameInput = document.getElementById('myName');
+          nameInput.placeholder = `הוזמנת לערוץ ${cleanCode}! כתוב את שמך`;
+          showToast(`הוזמנת לערוץ ${cleanCode} 📡 הכנס שם להצטרפות`);
+        }
       }
 
-      // Keyboard spacebar listener
+      // Unlock AudioContext on first touch / click anywhere
+      const unlockAudio = () => {
+        getAudioContext();
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('touchstart', unlockAudio);
+      };
+      document.addEventListener('click', unlockAudio, { once: true });
+      document.addEventListener('touchstart', unlockAudio, { once: true });
+
+      // Keyboard spacebar listener for desktop PTT
       let spaceDown = false;
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && document.activeElement?.tagName !== 'INPUT') {
@@ -1031,7 +1114,7 @@
     });
 
     /* ==========================================================================
-       Sound Synthesizer (Zero asset dependencies - Web Audio API)
+       Sound Synthesizer (Web Audio API - Zero Asset Latency)
        ========================================================================== */
 
     function getAudioContext() {
@@ -1045,7 +1128,6 @@
       return audioCtx;
     }
 
-    // PTT Press Chirp (Motorola/Kenwood chirp)
     function playChirp() {
       if (!soundFx) return;
       try {
@@ -1070,7 +1152,6 @@
       } catch (e) {}
     }
 
-    // PTT Release Squelch + Roger Beep
     function playRogerBeep() {
       if (!soundFx) return;
       try {
@@ -1091,8 +1172,8 @@
         osc.start(now);
         osc.stop(now + 0.07);
 
-        // 2. White noise static burst
-        const bufferSize = ctx.sampleRate * 0.1;
+        // 2. White noise squelch static burst
+        const bufferSize = Math.floor(ctx.sampleRate * 0.1);
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
@@ -1117,7 +1198,6 @@
       } catch (e) {}
     }
 
-    // Partner Joined Alert Chime (Happy 2-tone)
     function playConnectChime() {
       if (!soundFx) return;
       try {
@@ -1132,13 +1212,13 @@
         osc.frequency.setValueAtTime(990, now + 0.08);
 
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.15, now + 0.01);
-        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        gain.gain.linearRampToValueAtTime(0.16, now + 0.01);
+        gain.gain.linearRampToValueAtTime(0, now + 0.22);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.22);
+        osc.stop(now + 0.24);
       } catch (e) {}
     }
 
@@ -1149,12 +1229,14 @@
     }
 
     /* ==========================================================================
-       Navigation & Flow
+       Navigation
        ========================================================================== */
 
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-      document.getElementById(id).classList.remove('hidden');
+      const target = document.getElementById(id);
+      if (target) target.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function goWelcome() {
@@ -1170,12 +1252,13 @@
       document.getElementById('jName').textContent = myName;
       document.getElementById('myShow').textContent = myName;
 
-      // Unlock audio on first click
       getAudioContext();
 
       const params = new URLSearchParams(window.location.search);
-      if (params.get('code') || params.get('join')) {
-        goJoin();
+      const code = params.get('code') || params.get('join')?.replace('walkie-', '') || '';
+      if (code) {
+        document.getElementById('codeInput').value = code.trim().toUpperCase();
+        doJoin();
       } else {
         showScreen('welcomeScreen');
       }
@@ -1198,26 +1281,37 @@
     }
 
     /* ==========================================================================
-       Host Logic
+       Host Mode
        ========================================================================== */
 
     function goHost() {
+      isHost = true;
       showScreen('hostScreen');
       roomCode = genCode();
       document.getElementById('roomCode').textContent = roomCode;
       document.getElementById('cMini').textContent = roomCode;
-      document.getElementById('hostPartnerText').textContent = 'יוצר ערוץ קשר... 📡';
+      document.getElementById('hostPartnerText').textContent = 'מאתחל ערוץ מאובטח... 📡 (0 מחוברים)';
 
       // Warm up microphone
       getMic(true);
 
+      // Clean old peer instance if exists
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+      conns = {};
+      names = {};
+      calls = {};
+
       try {
-        peer = new Peer('walkie-' + roomCode);
+        peer = new Peer('walkie-' + roomCode, PEER_OPTS);
+
         peer.on('open', (id) => {
           roomId = id;
-          document.getElementById('hostPartnerText').textContent = 'ממתין לשותף שיצטרף לקשר... 📡';
-          
-          const link = location.origin + location.pathname + '?join=' + id + '&code=' + roomCode;
+          document.getElementById('hostPartnerText').textContent = 'ממתין לשותף שיצטרף לקשר... 📡 (רק אתה בערוץ)';
+
+          const link = location.origin + location.pathname + '?code=' + roomCode;
           const qr = document.getElementById('qrcode');
           qr.innerHTML = '';
           new QRCode(qr, {
@@ -1228,88 +1322,175 @@
             colorLight: '#ffffff'
           });
 
-          setupPeer();
+          // Setup modal QR as well
+          const mQr = document.getElementById('modalQrCode');
+          if (mQr) {
+            mQr.innerHTML = '';
+            new QRCode(mQr, {
+              text: link,
+              width: 170,
+              height: 170,
+              colorDark: '#090c12',
+              colorLight: '#ffffff'
+            });
+            document.getElementById('modalCodeText').textContent = roomCode;
+          }
+
+          setupPeerListeners();
         });
 
         peer.on('error', (err) => {
+          console.warn('Host Peer error:', err);
           if (err.type === 'unavailable-id') {
             roomCode = genCode();
             goHost();
-          } else {
-            document.getElementById('hostPartnerText').textContent = 'מוכן לחיבור מקומי';
           }
         });
       } catch (e) {
-        document.getElementById('hostPartnerText').textContent = 'שגיאת רשת';
+        document.getElementById('hostPartnerText').textContent = 'שגיאת רשת ביצירת ערוץ';
       }
     }
 
     /* ==========================================================================
-       Join Logic
+       Join Mode
        ========================================================================== */
 
     function goJoin() {
+      isHost = false;
       showScreen('joinScreen');
       getMic(true);
 
+      // Reset old peer if was previously hosting
+      if (peer && peer.id && peer.id.startsWith('walkie-')) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+      conns = {};
+      names = {};
+      calls = {};
+
       if (!peer) {
         try {
-          peer = new Peer();
-          peer.on('open', () => setupPeer());
+          peer = new Peer(PEER_OPTS);
+          peer.on('open', () => {
+            setupPeerListeners();
+          });
         } catch (e) {}
       }
     }
 
     function doJoin() {
-      const code = document.getElementById('codeInput').value.trim().toUpperCase();
+      const rawCode = document.getElementById('codeInput').value.trim();
+      const code = rawCode.replace(/[^A-Z0-9]/gi, '').toUpperCase();
       if (!code) {
-        alert('תכתוב קוד ערוץ!');
+        alert('נא להזין קוד ערוץ בן 6 תווים!');
         return;
       }
       stopScanner();
       roomCode = code;
       document.getElementById('cMini').textContent = code;
 
-      const urlId = new URLSearchParams(location.search).get('join');
-      const target = urlId || ('walkie-' + code);
+      const target = 'walkie-' + code;
 
-      showToast('מתחבר לקשר... 📻');
+      const statusEl = document.getElementById('joinStatusText');
+      const joinBtn = document.getElementById('joinBtn');
+      if (statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.innerHTML = `מחפש ערוץ <b>${code}</b>... 📡`;
+      }
+      if (joinBtn) joinBtn.disabled = true;
+
+      // Ensure peer is ready before connecting
+      function attemptJoin() {
+        if (!peer || !peer.id) {
+          if (!peer) {
+            peer = new Peer(PEER_OPTS);
+            setupPeerListeners();
+          }
+          peer.on('open', () => {
+            connectWithFailsafe(target, code, statusEl, joinBtn);
+          });
+          peer.on('error', (err) => {
+            console.warn('Join Peer error:', err);
+            if (err.type === 'peer-unavailable') {
+              if (statusEl) {
+                statusEl.innerHTML = `❌ ערוץ <b>${code}</b> לא נמצא.<br>ודא שהמארח פתח את החדר, או פתח אתה חדר חדש.`;
+              }
+              if (joinBtn) joinBtn.disabled = false;
+            }
+          });
+        } else {
+          connectWithFailsafe(target, code, statusEl, joinBtn);
+        }
+      }
+
+      attemptJoin();
+    }
+
+    function connectWithFailsafe(target, code, statusEl, joinBtn) {
+      if (statusEl) statusEl.innerHTML = `מתחבר ישירות לערוץ <b>${code}</b>... 🔗`;
       connectTo(target);
 
-      setTimeout(() => {
-        goTalk();
-      }, 1100);
+      if (joinAttemptTimer) clearTimeout(joinAttemptTimer);
+      joinAttemptTimer = setTimeout(() => {
+        if (Object.keys(conns).length === 0) {
+          if (statusEl) {
+            statusEl.innerHTML = `⚠️ לא זוהתה תגובה מערוץ <b>${code}</b>.<br>ודא שהמארח עדיין מחובר, או נסה שוב.`;
+          }
+          if (joinBtn) joinBtn.disabled = false;
+        }
+      }, 5000);
     }
 
     /* ==========================================================================
-       Core WebRTC Peer Handling
+       WebRTC Peer Engine & Synchronized Handshake
        ========================================================================== */
 
-    function setupPeer() {
+    function setupPeerListeners() {
       if (!peer) return;
 
+      // When someone connects to us
       peer.on('connection', (c) => {
         c.on('open', () => {
           conns[c.peer] = c;
           c.on('data', (d) => onData(d, c.peer));
-          c.send({ t: 'name', name: myName });
-          updateConnectionStatus();
+
+          // Immediately send our handshake profile & broadcast peers list
+          c.send({ t: 'handshake', name: myName });
+          broadcastPeers();
+          updateLiveSync();
+
+          // Auto-transition host into talkScreen if still looking at hostScreen!
+          const hostScreen = document.getElementById('hostScreen');
+          if (hostScreen && !hostScreen.classList.contains('hidden')) {
+            showToast(`קשר נוצר בהצלחה! מעביר לעמדת השידור 📻`);
+            setTimeout(() => goTalk(), 600);
+          }
+          closeQrModal();
         });
+
         c.on('close', () => {
           delete conns[c.peer];
           delete names[c.peer];
-          updateConnectionStatus();
+          delete calls[c.peer];
+          updateLiveSync();
+          showToast('שותף התנתק מהקשר ⚠️');
         });
-        c.on('error', () => {
+
+        c.on('error', (err) => {
+          console.warn('Conn error:', err);
           delete conns[c.peer];
           delete names[c.peer];
-          updateConnectionStatus();
+          delete calls[c.peer];
+          updateLiveSync();
         });
       });
 
+      // When someone calls with audio
       peer.on('call', async (c) => {
         if (!myStream) myStream = await getMic(true);
         c.answer(myStream);
+        calls[c.peer] = c;
         c.on('stream', (s) => addAudio(s, c.peer));
       });
     }
@@ -1320,57 +1501,46 @@
         return myStream;
       }
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const s = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false
+        });
         s.getAudioTracks()[0].enabled = !m;
         myStream = s;
         setupVisualizer(s);
         return s;
       } catch (e) {
-        alert('נא לאשר גישה למיקרופון בהגדרות הדפדפן!');
+        console.warn('Microphone error:', e);
         return null;
       }
     }
 
     function addAudio(s, pid) {
-      if (document.getElementById('a-' + pid)) return;
-      const a = document.createElement('audio');
-      a.id = 'a-' + pid;
+      let a = document.getElementById('a-' + pid);
+      if (!a) {
+        a = document.createElement('audio');
+        a.id = 'a-' + pid;
+        a.autoplay = true;
+        a.playsInline = true;
+        a.setAttribute('playsinline', '');
+        a.setAttribute('webkit-playsinline', '');
+        document.getElementById('audios').appendChild(a);
+      }
       a.srcObject = s;
-      a.autoplay = true;
-      a.playsInline = true;
       a.volume = 1.0;
       a.muted = speakerMuted;
-      document.getElementById('audios').appendChild(a);
 
-      a.play().catch(() => {
-        document.body.addEventListener('click', () => a.play(), { once: true });
-        document.body.addEventListener('touchstart', () => a.play(), { once: true });
-      });
-    }
-
-    function onData(d, from) {
-      if (d.t === 'name') {
-        names[from] = d.name;
-        updateConnectionStatus();
-      }
-      if (d.t === 'talk-s') {
-        const who = d.name || 'השותף';
-        document.getElementById('voiceStatusBox').className = 'voice-status-box receiving';
-        document.getElementById('voiceSub').textContent = 'משדר בערוץ:';
-        document.getElementById('whoTalk').textContent = who + ' 🔊';
-        highlightPeer(from, true);
-        haptic([30]);
-      }
-      if (d.t === 'talk-e') {
-        document.getElementById('voiceStatusBox').className = 'voice-status-box idle';
-        document.getElementById('voiceSub').textContent = 'מצב ערוץ:';
-        document.getElementById('whoTalk').textContent = 'ערוץ פנוי להאזנה';
-        highlightPeer(from, false);
-        playRogerBeep();
-      }
-      if (d.t === 'peers' && Array.isArray(d.peers)) {
-        d.peers.forEach((p) => {
-          if (p !== peer.id && !conns[p]) connectTo(p);
+      const playPromise = a.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.log('Autoplay deferred until user touch:', err);
+          const unlock = () => {
+            a.play();
+            document.removeEventListener('click', unlock);
+            document.removeEventListener('touchstart', unlock);
+          };
+          document.addEventListener('click', unlock, { once: true });
+          document.addEventListener('touchstart', unlock, { once: true });
         });
       }
     }
@@ -1378,66 +1548,127 @@
     async function connectTo(id) {
       if (!id || id === peer?.id || conns[id]) return;
       if (!myStream) myStream = await getMic(true);
-      if (!myStream) return;
 
-      const c = peer.connect(id);
+      const c = peer.connect(id, { reliable: true });
       c.on('open', () => {
         conns[id] = c;
-        c.send({ t: 'name', name: myName });
+        c.send({ t: 'handshake', name: myName });
         c.on('data', (d) => onData(d, id));
-        broadcast();
-        updateConnectionStatus();
+        broadcastPeers();
+        updateLiveSync();
+
+        // INSTANT ENTRY TO TALK SCREEN!
+        if (joinAttemptTimer) clearTimeout(joinAttemptTimer);
+        const statusEl = document.getElementById('joinStatusText');
+        const joinBtn = document.getElementById('joinBtn');
+        if (statusEl) statusEl.classList.add('hidden');
+        if (joinBtn) joinBtn.disabled = false;
+        goTalk();
       });
+
       c.on('close', () => {
         delete conns[id];
         delete names[id];
-        updateConnectionStatus();
+        delete calls[id];
+        updateLiveSync();
       });
 
-      const call = peer.call(id, myStream);
-      call.on('stream', (s) => addAudio(s, id));
+      c.on('error', (err) => {
+        console.warn('Client DataConnection error:', err);
+        delete conns[id];
+        delete names[id];
+        delete calls[id];
+        updateLiveSync();
+      });
+
+      if (myStream) {
+        const call = peer.call(id, myStream);
+        calls[id] = call;
+        call.on('stream', (s) => addAudio(s, id));
+      }
     }
 
-    function broadcast() {
+    function broadcastPeers() {
+      if (!peer || !peer.id) return;
       const all = [peer.id, ...Object.keys(conns)];
       Object.values(conns).forEach((c) => {
         try { c.send({ t: 'peers', peers: all }); } catch (e) {}
       });
-      updateConnectionStatus();
+      updateLiveSync();
+    }
+
+    function onData(d, from) {
+      if (!d || !d.t) return;
+
+      if (d.t === 'handshake') {
+        names[from] = d.name;
+        if (conns[from]) {
+          try { conns[from].send({ t: 'handshake-ack', name: myName }); } catch (e) {}
+        }
+        updateLiveSync();
+      } else if (d.t === 'handshake-ack') {
+        names[from] = d.name;
+        updateLiveSync();
+      } else if (d.t === 'name') {
+        names[from] = d.name;
+        updateLiveSync();
+      } else if (d.t === 'talk-s') {
+        const who = d.name || 'השותף';
+        document.getElementById('voiceStatusBox').className = 'voice-status-box receiving';
+        document.getElementById('voiceSub').textContent = 'משדר בערוץ:';
+        document.getElementById('whoTalk').textContent = who + ' 🔊';
+        highlightPeer(from, true);
+        haptic([30]);
+      } else if (d.t === 'talk-e') {
+        document.getElementById('voiceStatusBox').className = 'voice-status-box idle';
+        document.getElementById('voiceSub').textContent = 'מצב ערוץ:';
+        document.getElementById('whoTalk').textContent = 'ערוץ פנוי להאזנה';
+        highlightPeer(from, false);
+        playRogerBeep();
+      } else if (d.t === 'peers' && Array.isArray(d.peers)) {
+        d.peers.forEach((p) => {
+          if (p !== peer?.id && !conns[p]) connectTo(p);
+        });
+      } else if (d.t === 'ping') {
+        if (conns[from]) {
+          try { conns[from].send({ t: 'pong' }); } catch (e) {}
+        }
+      }
     }
 
     /* ==========================================================================
-       LIVE 2-PERSON DETECTOR & CONNECTION STATUS
+       GUARANTEED 2-PERSON SYNCHRONIZATION DETECTOR
        ========================================================================== */
 
-    let wasPaired = false;
-
-    function updateConnectionStatus() {
-      const peerCount = Object.keys(conns).length + 1; // You + Peers
-      const otherPeers = Object.keys(conns);
-
-      // 1. Update Counts
-      document.getElementById('cnt').textContent = peerCount;
-      document.getElementById('liveCountBadge').innerHTML = `👥 <b>${peerCount}</b> מחוברים`;
-      document.getElementById('peerListCount').textContent = peerCount;
-
-      // 2. Check if 2 people are connected ("שיזהה שבאמת יש 2 אנשים מחוברים")
+    function updateLiveSync() {
+      const peerCount = Object.keys(conns).length + 1; // You + Connected Partners
+      const partnerIds = Object.keys(conns);
       const isPaired = peerCount >= 2;
 
-      // Host screen radar banner
+      // Update counters everywhere
+      document.getElementById('cnt').textContent = peerCount;
+      const countBadge = document.getElementById('liveCountBadge');
+      if (countBadge) {
+        countBadge.innerHTML = isPaired 
+          ? `🟢 <b>${peerCount} מחוברים</b>` 
+          : `👥 <b>${peerCount} מחוברים</b>`;
+        countBadge.className = isPaired ? 'hud-pill paired-count' : 'hud-pill';
+      }
+      document.getElementById('peerListCount').textContent = peerCount;
+
+      // Elements
       const hostRadar = document.getElementById('hostPartnerStatus');
       const hostText = document.getElementById('hostPartnerText');
       const hostEnterBtn = document.getElementById('btnHostEnter');
 
-      // Talk screen radar banner
       const partnerBanner = document.getElementById('partnerBanner');
       const partnerText = document.getElementById('partnerStatusText');
       const signalDot = document.getElementById('signalDot');
 
       if (isPaired) {
-        const partnerName = names[otherPeers[0]] || 'שותף';
-        
-        // Host screen state
+        const partnerName = names[partnerIds[0]] || 'שותף';
+
+        // Host Screen Status
         if (hostRadar) {
           hostRadar.className = 'connect-radar paired';
           hostText.innerHTML = `🎯 <b>קליטה זוהתה! ${partnerName} התחבר! (${peerCount} בערוץ) ✅</b>`;
@@ -1445,42 +1676,41 @@
           hostEnterBtn.innerHTML = `🚀 כנס לדבר עם ${partnerName}!`;
         }
 
-        // Talk screen state
+        // Talk Screen Status
         if (partnerBanner) {
           partnerBanner.className = 'connect-radar paired';
-          partnerText.innerHTML = `🟢 <b>קשר פעיל: מחובר לשותף (${partnerName}) • אות 100%</b>`;
+          partnerText.innerHTML = `🟢 <b>קשר פעיל ומסונכרן: מחובר לשותף (${partnerName}) • קליטה 100%</b>`;
           signalDot.textContent = `● מחובר ל-${partnerName}`;
           signalDot.style.color = 'var(--green)';
         }
 
-        // Play alert once when connection is newly established
+        // Play chime & alert on first connection handshake
         if (!wasPaired) {
           wasPaired = true;
           playConnectChime();
           haptic([40, 50, 40]);
-          showToast(`קשר נוצר בהצלחה עם ${partnerName}! 📻`);
+          showToast(`קליטה זוהתה! ${partnerName} התחבר לקשר 📻`);
         }
       } else {
         wasPaired = false;
 
-        // Host screen state
+        // Host Screen
         if (hostRadar) {
           hostRadar.className = 'connect-radar waiting';
-          hostText.textContent = 'ממתין לשותף שיצטרף לקשר... 📡 (0 מחוברים)';
+          hostText.textContent = 'ממתין לשותף שיצטרף לקשר... 📡 (רק אתה בערוץ)';
           hostEnterBtn.className = 'btn-action btn-green';
           hostEnterBtn.textContent = '✅ כנס לעמדת השידור';
         }
 
-        // Talk screen state
+        // Talk Screen
         if (partnerBanner) {
           partnerBanner.className = 'connect-radar waiting';
-          partnerText.textContent = 'ממתין לשותף שיצטרף לקוד: ' + roomCode + ' 📡';
+          partnerText.textContent = `ממתין לשותף שיצטרף לקוד: ${roomCode} 📡 (רק אתה בערוץ)`;
           signalDot.textContent = '● ממתין לשותף';
           signalDot.style.color = 'var(--amber)';
         }
       }
 
-      // Render Peers List
       renderPeers();
     }
 
@@ -1519,13 +1749,20 @@
       if (tag) tag.textContent = isTalking ? 'משדר 🎙️' : 'מאזין 👂';
     }
 
+    // Ping Heartbeat every 2.5 seconds to keep mobile connections hot
+    setInterval(() => {
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'ping' }); } catch (e) {}
+      });
+    }, 2500);
+
     /* ==========================================================================
-       Talk & PTT Mechanics
+       Talk & PTT Audio Control
        ========================================================================== */
 
     function goTalk() {
       showScreen('talkScreen');
-      updateConnectionStatus();
+      updateLiveSync();
       if (!myStream) getMic(true);
     }
 
@@ -1541,7 +1778,6 @@
       if (e && e.preventDefault) e.preventDefault();
       if (talking) return;
 
-      // Unlock audio context
       getAudioContext();
 
       if (talkMode === 'lock' && talking) {
@@ -1557,9 +1793,7 @@
       playChirp();
       haptic([35]);
 
-      // Update UI
-      const btn = document.getElementById('redBtn');
-      btn.classList.add('active');
+      document.getElementById('redBtn').classList.add('active');
       document.getElementById('pttMainText').textContent = 'משדר...';
 
       const box = document.getElementById('voiceStatusBox');
@@ -1569,7 +1803,6 @@
 
       renderPeers();
 
-      // Broadcast talk-s to all peers
       Object.values(conns).forEach((c) => {
         try { c.send({ t: 'talk-s', name: myName }); } catch (err) {}
       });
@@ -1587,9 +1820,7 @@
       playRogerBeep();
       haptic([15, 30, 15]);
 
-      // Reset UI
-      const btn = document.getElementById('redBtn');
-      btn.classList.remove('active');
+      document.getElementById('redBtn').classList.remove('active');
       document.getElementById('pttMainText').textContent = 'לחץ ודבר';
 
       const box = document.getElementById('voiceStatusBox');
@@ -1599,14 +1830,13 @@
 
       renderPeers();
 
-      // Broadcast talk-e to all peers
       Object.values(conns).forEach((c) => {
         try { c.send({ t: 'talk-e' }); } catch (err) {}
       });
     }
 
     /* ==========================================================================
-       Live Audio Visualizer Canvas (60 FPS)
+       Live Audio Visualizer Canvas
        ========================================================================== */
 
     function setupVisualizer(stream) {
@@ -1636,7 +1866,7 @@
 
           for (let i = 0; i < 32; i++) {
             const h = Math.max(3, (buf[i] / 255) * canvas.height * 0.9);
-            cCtx.fillStyle = talking ? 'rgba(239, 68, 68, 0.7)' : 'rgba(255, 255, 255, 0.08)';
+            cCtx.fillStyle = talking ? 'rgba(239, 68, 68, 0.75)' : 'rgba(255, 255, 255, 0.08)';
             cCtx.fillRect(x, (canvas.height - h) / 2, barW - 1, h);
             x += barW;
           }
@@ -1646,7 +1876,7 @@
     }
 
     /* ==========================================================================
-       QR Scanner & Sharing Tools
+       Tools & QR Scanner
        ========================================================================== */
 
     function toggleScanner() {
@@ -1661,13 +1891,10 @@
             stopScanner();
             try {
               const u = new URL(d);
-              const id = u.searchParams.get('join');
               const code = u.searchParams.get('code') || '';
-              if (id) {
+              if (code) {
                 document.getElementById('codeInput').value = code;
-                document.getElementById('cMini').textContent = code;
-                connectTo(id);
-                setTimeout(() => goTalk(), 1000);
+                doJoin();
                 return;
               }
             } catch (e) {
@@ -1694,11 +1921,11 @@
     }
 
     function shareLink() {
-      const link = `${location.origin}${location.pathname}?join=walkie-${roomCode}&code=${roomCode}`;
+      const link = `${location.origin}${location.pathname}?code=${roomCode}`;
       if (navigator.share && navigator.canShare && navigator.canShare({ url: link })) {
         navigator.share({
           title: 'ווקי-טוקי טקטי',
-          text: `בוא לדבר איתי בקשר! קוד חדר: ${roomCode}`,
+          text: `בוא לדבר איתי בקשר ווקי-טוקי! קוד חדר: ${roomCode}`,
           url: link
         }).catch(() => {});
       } else {
@@ -1709,8 +1936,24 @@
     }
 
     function showQrModal() {
-      const link = `${location.origin}${location.pathname}?join=walkie-${roomCode}&code=${roomCode}`;
-      prompt('העתק את הקישור הישיר לערוץ:', link);
+      const link = `${location.origin}${location.pathname}?code=${roomCode}`;
+      const mQr = document.getElementById('modalQrCode');
+      if (mQr) {
+        mQr.innerHTML = '';
+        new QRCode(mQr, {
+          text: link,
+          width: 170,
+          height: 170,
+          colorDark: '#090c12',
+          colorLight: '#ffffff'
+        });
+        document.getElementById('modalCodeText').textContent = roomCode;
+      }
+      document.getElementById('qrModal')?.classList.remove('hidden');
+    }
+
+    function closeQrModal() {
+      document.getElementById('qrModal')?.classList.add('hidden');
     }
 
     function toggleSoundFx() {
@@ -1728,7 +1971,7 @@
     }
 
     function toggleHelp() {
-      alert('📻 ווקי-טוקי טקטי:\n\n1. לחץ והחזק את הכפתור האדום או מקש Space כדי לדבר.\n2. שחרר כדי לחזור להאזנה.\n3. כאשר 2 אנשים מחוברים, החיווי יהפוך לירוק עם חיווי קשר פעיל.\n4. האודיו עובר בצורה ישירה ומוצפנת (WebRTC P2P) מדפדפן לדפדפן.');
+      alert('📻 ווקי-טוקי טקטי:\n\n1. לחץ והחזק את הכפתור האדום או מקש Space כדי לדבר.\n2. שחרר כדי לחזור להאזנה.\n3. כאשר 2 אנשים מחוברים, החיווי יהפוך לירוק זוהר.\n4. השיחה עוברת ישירות ומאובטחת (WebRTC P2P).');
     }
 
     let toastTimer = null;
