@@ -1408,8 +1408,16 @@ input[type="text"]:focus {
 .text-amber { color: var(--accent-amber); }
 .text-dim { color: var(--text-muted); }
 .mx-auto { margin-left: auto; margin-right: auto; }
-.my-3 { margin-top: 12px; margin-bottom: 12px; }
-.hidden-audio-rack { display: none; }
+.hidden-audio-rack {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0.001;
+  pointer-events: none;
+  visibility: visible;
+}
 
 /* Responsive adjustments */
 @media (max-height: 680px) {

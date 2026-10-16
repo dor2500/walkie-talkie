@@ -25,6 +25,7 @@ window.WalkieWebRTC = (function () {
   let myName = '';
   let isHost = false;
   let speakerMuted = false;
+  let heartbeatTimer = null;
 
   // Event callbacks
   let callbacks = {
@@ -39,9 +40,19 @@ window.WalkieWebRTC = (function () {
     isHost = isHostMode;
     callbacks = Object.assign(callbacks, cbs);
 
+    // Reset old peer if we need a different ID
     if (peer && !peer.destroyed) {
-      if (callbacks.onReady) callbacks.onReady(peer.id);
-      return;
+      if (customId && peer.id === customId) {
+        if (callbacks.onReady) callbacks.onReady(peer.id);
+        return;
+      }
+      try {
+        peer.destroy();
+      } catch (e) {}
+      peer = null;
+      conns = {};
+      calls = {};
+      names = {};
     }
 
     try {
@@ -49,12 +60,20 @@ window.WalkieWebRTC = (function () {
 
       peer.on('open', (id) => {
         setupIncomingHandlers();
+        startHeartbeat();
         if (callbacks.onReady) callbacks.onReady(id);
       });
 
       peer.on('error', (err) => {
         console.warn('PeerJS Network Error:', err.type, err);
         if (callbacks.onError) callbacks.onError(err);
+      });
+
+      peer.on('disconnected', () => {
+        console.log('Peer disconnected from signaling server, reconnecting...');
+        try {
+          peer.reconnect();
+        } catch (e) {}
       });
     } catch (e) {
       console.error('Peer instantiation error:', e);
@@ -85,10 +104,10 @@ window.WalkieWebRTC = (function () {
     // Incoming Voice Call
     peer.on('call', async (c) => {
       calls[c.peer] = c;
-      if (!myStream) {
-        myStream = await getMicrophoneStream(true);
+      const stream = await getMicrophoneStream(true);
+      if (stream) {
+        c.answer(stream);
       }
-      c.answer(myStream);
       c.on('stream', (remoteStream) => {
         attachAudioElement(remoteStream, c.peer);
       });
@@ -99,9 +118,7 @@ window.WalkieWebRTC = (function () {
   async function connectToPeer(id) {
     if (!id || id === peer?.id || conns[id]) return;
 
-    if (!myStream) {
-      myStream = await getMicrophoneStream(true);
-    }
+    const stream = await getMicrophoneStream(true);
 
     const c = peer.connect(id, { reliable: true });
     c.on('open', () => {
@@ -115,8 +132,8 @@ window.WalkieWebRTC = (function () {
       notifyPeersChange();
     });
 
-    if (myStream) {
-      const call = peer.call(id, myStream);
+    if (stream) {
+      const call = peer.call(id, stream);
       calls[id] = call;
       call.on('stream', (remoteStream) => {
         attachAudioElement(remoteStream, id);
@@ -174,14 +191,24 @@ window.WalkieWebRTC = (function () {
     }
   }
 
+  /**
+   * Acquires the persistent microphone stream ONCE and caches it.
+   * Audio track starts muted (enabled = false) until PTT is pressed.
+   */
   async function getMicrophoneStream(muteOnStart = true) {
+    if (myStream && myStream.active && myStream.getAudioTracks().length > 0) {
+      if (muteOnStart) {
+        myStream.getAudioTracks()[0].enabled = false;
+      }
+      return myStream;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
+          autoGainControl: true
         },
         video: false
       });
@@ -198,10 +225,15 @@ window.WalkieWebRTC = (function () {
     }
   }
 
+  /**
+   * Instantly toggles the active microphone track (0ms delay)
+   */
   function setMicrophoneEnabled(enabled) {
     if (myStream && myStream.getAudioTracks().length > 0) {
       myStream.getAudioTracks()[0].enabled = enabled;
+      return true;
     }
+    return false;
   }
 
   function attachAudioElement(remoteStream, peerId) {
@@ -212,15 +244,31 @@ window.WalkieWebRTC = (function () {
     if (!audio) {
       audio = document.createElement('audio');
       audio.id = 'audio-' + peerId;
+      audio.setAttribute('autoplay', 'autoplay');
+      audio.setAttribute('playsinline', 'true');
+      audio.setAttribute('webkit-playsinline', 'true');
       audio.autoplay = true;
       audio.playsInline = true;
+      audio.volume = 1.0;
       audio.muted = speakerMuted;
       rack.appendChild(audio);
     }
     audio.srcObject = remoteStream;
+
     audio.play().catch(() => {
-      document.body.addEventListener('click', () => audio.play(), { once: true });
+      ['click', 'touchstart', 'touchend', 'pointerdown'].forEach((evt) => {
+        document.addEventListener(evt, () => audio.play().catch(() => {}), { once: true });
+      });
     });
+
+    // Also connect to Web Audio API for guaranteed fidelity
+    try {
+      const ctx = window.WalkieAudio.getContext();
+      if (ctx && !speakerMuted) {
+        const streamSource = ctx.createMediaStreamSource(remoteStream);
+        streamSource.connect(ctx.destination);
+      }
+    } catch (e) {}
   }
 
   function detachAudioElement(peerId) {
@@ -238,10 +286,20 @@ window.WalkieWebRTC = (function () {
     return speakerMuted;
   }
 
+  function startHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = setInterval(() => {
+      broadcast({ t: 'ping', time: Date.now() });
+    }, 5000);
+  }
+
   function disconnect() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     broadcast({ t: 'leave' });
     if (peer) {
-      peer.destroy();
+      try {
+        peer.destroy();
+      } catch (e) {}
       peer = null;
     }
     if (myStream) {
@@ -262,6 +320,8 @@ window.WalkieWebRTC = (function () {
     toggleSpeakerMute,
     disconnect,
     getPeerId: () => peer?.id || '',
-    getStream: () => myStream
+    getStream: () => myStream,
+    getConns: () => conns,
+    getNames: () => names
   };
 })();

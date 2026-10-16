@@ -95,7 +95,7 @@
           <h1 class="main-title">ווקי-טוקי טקטי</h1>
           <p class="subtitle">רשת קשר P2P מוצפנת ומיידית בזמן אמת ללא שרתים מרכזיים</p>
 
-          <form id="nameForm" class="form-group" onsubmit="event.preventDefault(); goWelcome();">
+          <form id="nameForm" class="form-group" onsubmit="return handleNameSubmit(event);">
             <label for="myName" class="input-label">כינוי / שם בקשר:</label>
             <div class="input-wrapper">
               <input 
@@ -108,7 +108,7 @@
               />
               <span class="input-glow"></span>
             </div>
-            <button type="submit" class="btn btn-primary btn-glow mt-4">
+            <button type="button" onclick="handleNameSubmit(event)" class="btn btn-primary btn-glow mt-4">
               <span>התחבר לרשת הקשר</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -258,7 +258,7 @@
 
           <div class="divider"><span>או הקלד קוד ידנית</span></div>
 
-          <form id="joinForm" onsubmit="event.preventDefault(); doJoin();">
+          <form id="joinForm" onsubmit="event.preventDefault(); doJoin(); return false;">
             <div class="form-group">
               <label for="codeInput" class="input-label">קוד ערוץ (6 תווים):</label>
               <div class="input-wrapper">
@@ -275,7 +275,7 @@
             </div>
 
             <div class="action-grid mt-4">
-              <button type="submit" id="joinSubmitBtn" class="btn btn-primary btn-large">
+              <button type="button" onclick="doJoin()" id="joinSubmitBtn" class="btn btn-primary btn-large">
                 <span>התחבר לערוץ</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -365,6 +365,11 @@
                 id="pttButton" 
                 class="ptt-btn" 
                 aria-label="Push to talk button"
+                type="button"
+                onmousedown="window.handlePttDown?.(event)"
+                onmouseup="window.handlePttUp?.(event)"
+                ontouchstart="window.handlePttDown?.(event)"
+                ontouchend="window.handlePttUp?.(event)"
               >
                 <div class="ptt-inner-core">
                   <div class="ptt-mic-icon">

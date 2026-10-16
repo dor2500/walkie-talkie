@@ -17,13 +17,20 @@
   // Cache DOM elements
   const el = {};
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function initApp() {
     cacheDomElements();
     restorePreferences();
     bindEvents();
     checkUrlInvitation();
     registerServiceWorker();
-  });
+  }
+
+  // Ensure initialization runs regardless of script load timing
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
 
   function cacheDomElements() {
     el.nameInput = document.getElementById('myName');
@@ -80,10 +87,27 @@
     // Info Modal
     el.infoBtn?.addEventListener('click', () => el.infoModal?.classList.remove('hidden'));
 
-    // PTT Button Touch & Pointer Handlers
+    // PTT Button - Touch Events (Mobile) with passive: false to prevent scrolling/cancels
     if (el.pttButton) {
-      el.pttButton.addEventListener('pointerdown', (e) => {
+      el.pttButton.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        window.WalkieAudio.unlockAudio();
+        if (talkMode === 'ptt') {
+          startTransmission();
+        } else {
+          talking ? stopTransmission() : startTransmission();
+        }
+      }, { passive: false });
+
+      el.pttButton.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (talkMode === 'ptt') stopTransmission();
+      }, { passive: false });
+
+      // PTT Button - Mouse Events (Desktop)
+      el.pttButton.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        window.WalkieAudio.unlockAudio();
         if (talkMode === 'ptt') {
           startTransmission();
         } else {
@@ -91,12 +115,7 @@
         }
       });
 
-      el.pttButton.addEventListener('pointerup', (e) => {
-        e.preventDefault();
-        if (talkMode === 'ptt') stopTransmission();
-      });
-
-      el.pttButton.addEventListener('pointercancel', (e) => {
+      el.pttButton.addEventListener('mouseup', (e) => {
         e.preventDefault();
         if (talkMode === 'ptt') stopTransmission();
       });
@@ -104,7 +123,7 @@
       el.pttButton.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (Spacebar for PTT)
     let spaceHeld = false;
     window.addEventListener('keydown', (e) => {
       const activeTag = document.activeElement?.tagName;
@@ -114,6 +133,7 @@
         e.preventDefault();
         if (!spaceHeld) {
           spaceHeld = true;
+          window.WalkieAudio.unlockAudio();
           if (talkMode === 'ptt') {
             startTransmission();
           } else {
@@ -144,21 +164,48 @@
      Screen Handlers & Navigation
      ========================================================================== */
 
+  window.handleNameSubmit = function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    window.goWelcome();
+    return false;
+  };
+
+  window.handlePttDown = function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    window.WalkieAudio.unlockAudio();
+    if (talkMode === 'ptt') {
+      startTransmission();
+    } else {
+      talking ? stopTransmission() : startTransmission();
+    }
+  };
+
+  window.handlePttUp = function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (talkMode === 'ptt') {
+      stopTransmission();
+    }
+  };
+
   window.goWelcome = function () {
-    myName = el.nameInput.value.trim();
+    const input = el.nameInput || document.getElementById('myName');
+    myName = input ? input.value.trim() : '';
     if (!myName) {
       window.WalkieUI.showToast('נא להזין כינוי / שם');
-      el.nameInput.focus();
+      if (input) input.focus();
       return;
     }
 
     localStorage.setItem('walkie_user_name', myName);
 
-    el.helloName.textContent = myName;
-    el.welcomeAvatar.textContent = myName.charAt(0);
-    el.hName.textContent = myName;
-    el.jName.textContent = myName;
-    el.myShow.textContent = myName;
+    if (el.helloName) el.helloName.textContent = myName;
+    if (el.welcomeAvatar) el.welcomeAvatar.textContent = myName.charAt(0);
+    if (el.hName) el.hName.textContent = myName;
+    if (el.jName) el.jName.textContent = myName;
+    if (el.myShow) el.myShow.textContent = myName;
+
+    // Pre-unlock audio
+    window.WalkieAudio.unlockAudio();
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code') || params.get('room');
@@ -191,13 +238,16 @@
     window.WalkieUI.switchScreen('hostScreen');
     roomCode = genCode();
 
-    el.roomCode.textContent = roomCode;
-    el.cMini.textContent = roomCode;
-    el.hostStatusText.textContent = 'מאתחל ערוץ מאובטח...';
+    if (el.roomCode) el.roomCode.textContent = roomCode;
+    if (el.cMini) el.cMini.textContent = roomCode;
+    if (el.hostStatusText) el.hostStatusText.textContent = 'מאתחל ערוץ מאובטח...';
+
+    // Warm up microphone
+    window.WalkieWebRTC.getMicrophoneStream(true);
 
     window.WalkieWebRTC.init('walkie-' + roomCode, myName, true, {
       onReady: (id) => {
-        el.hostStatusText.textContent = 'ערוץ מוכן לחיבור!';
+        if (el.hostStatusText) el.hostStatusText.textContent = 'ערוץ מוכן לחיבור!';
         const joinUrl = `${window.location.origin}${window.location.pathname}?join=${id}&code=${roomCode}`;
         window.WalkieUI.renderQrCode('qrcode', joinUrl, 170);
       },
@@ -216,30 +266,33 @@
     isHost = false;
     window.WalkieUI.switchScreen('joinScreen');
 
+    // Warm up microphone
+    window.WalkieWebRTC.getMicrophoneStream(true);
+
     window.WalkieWebRTC.init(null, myName, false, {
       onData: handleWebRtcData,
       onPeersChange: refreshPeers,
       onError: () => window.WalkieUI.showToast('שגיאת חיבור ברשת')
     });
 
-    if (el.codeInput.value.trim()) {
+    if (el.codeInput && el.codeInput.value.trim()) {
       document.getElementById('joinSubmitBtn')?.focus();
     } else {
-      setTimeout(() => el.codeInput.focus(), 300);
+      setTimeout(() => el.codeInput?.focus(), 300);
     }
   };
 
   window.doJoin = function () {
-    const code = el.codeInput.value.trim().toUpperCase();
+    const code = el.codeInput ? el.codeInput.value.trim().toUpperCase() : '';
     if (!code) {
       window.WalkieUI.showToast('נא להזין קוד ערוץ');
-      el.codeInput.focus();
+      el.codeInput?.focus();
       return;
     }
 
     window.WalkieUI.stopQrScanner();
     roomCode = code;
-    el.cMini.textContent = roomCode;
+    if (el.cMini) el.cMini.textContent = roomCode;
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetId = urlParams.get('join') || ('walkie-' + code);
@@ -259,10 +312,10 @@
           const url = new URL(decodedText);
           const joinId = url.searchParams.get('join');
           const code = url.searchParams.get('code') || '';
-          if (code) {
+          if (code && el.codeInput) {
             el.codeInput.value = code;
             roomCode = code;
-            el.cMini.textContent = code;
+            if (el.cMini) el.cMini.textContent = code;
           }
           if (joinId) {
             window.WalkieUI.showToast('ברקוד נסרק! מתחבר...');
@@ -271,7 +324,7 @@
             return;
           }
         } catch (e) {
-          el.codeInput.value = decodedText;
+          if (el.codeInput) el.codeInput.value = decodedText;
           window.doJoin();
         }
       }, () => window.WalkieUI.showToast('שגיאה בהפעלת מצלמה'));
@@ -285,6 +338,19 @@
   window.goTalk = function () {
     window.WalkieUI.switchScreen('talkScreen');
     window.WalkieAudio.haptic([20]);
+
+    // Ensure audio & mic are warm
+    window.WalkieAudio.unlockAudio();
+    window.WalkieWebRTC.getMicrophoneStream(true);
+
+    // Initial render of peers
+    window.WalkieUI.renderPeersList(
+      window.WalkieWebRTC.getConns(),
+      window.WalkieWebRTC.getNames(),
+      myName,
+      currentSpeaker,
+      talking
+    );
 
     // Start 60fps Visualizer
     window.WalkieUI.startVisualizer(
@@ -314,12 +380,13 @@
   async function startTransmission() {
     if (talking) return;
 
-    window.WalkieAudio.getContext(); // Unlock audio context
+    window.WalkieAudio.unlockAudio();
     talking = true;
 
-    const stream = await window.WalkieWebRTC.getMicrophoneStream(false);
-    if (stream) {
-      window.WalkieWebRTC.setMicrophoneEnabled(true);
+    // Enable existing microphone track immediately
+    const enabled = window.WalkieWebRTC.setMicrophoneEnabled(true);
+    if (!enabled) {
+      await window.WalkieWebRTC.getMicrophoneStream(false);
     }
 
     window.WalkieAudio.haptic([35]);
@@ -333,7 +400,9 @@
     if (!talking) return;
     talking = false;
 
+    // Instantly mute microphone track
     window.WalkieWebRTC.setMicrophoneEnabled(false);
+
     window.WalkieAudio.haptic([15, 30, 15]);
     window.WalkieAudio.playPttEnd();
 
@@ -415,7 +484,7 @@
   window.openShareModal = () => window.shareViaWebShare();
 
   window.openQrModal = function () {
-    el.qrModalCode.textContent = roomCode;
+    if (el.qrModalCode) el.qrModalCode.textContent = roomCode;
     const joinUrl = `${window.location.origin}${window.location.pathname}?join=walkie-${roomCode}&code=${roomCode}`;
     window.WalkieUI.renderQrCode('modalQrCode', joinUrl, 180);
     el.qrModal?.classList.remove('hidden');

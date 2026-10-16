@@ -156,8 +156,33 @@ window.WalkieAudio = (function () {
     }
   }
 
+  /**
+   * Unlock Audio on mobile browsers (iOS Safari / Android Chrome)
+   */
+  function unlockAudio() {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    if (ctx) {
+      try {
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      } catch (e) {}
+    }
+  }
+
+  // Auto-unlock on first user tap/click
+  ['click', 'touchstart', 'touchend', 'pointerdown'].forEach((evt) => {
+    document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+  });
+
   return {
     getContext: getAudioContext,
+    unlockAudio,
     setMuted,
     getMuted,
     playPttStart,
