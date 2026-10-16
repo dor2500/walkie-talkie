@@ -1,9 +1,13 @@
 # Walkie-Talkie Tactical Web PTT (ווקי-טוקי טקטי)
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-brightgreen?style=for-the-badge&logo=googlechrome&logoColor=white)](https://dor2500.github.io/walkie-talkie/)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=for-the-badge&logo=webrtc&logoColor=white)
+
+🌐 **התנסות אונליין מיידית בדפדפן / בסמארטפון:**  
+👉 **[https://dor2500.github.io/walkie-talkie/](https://dor2500.github.io/walkie-talkie/)**
 
 מערכת מכשיר קשר (ווקי-טוקי) טקטית מודרנית מבוססת דפדפן, הפועלת בזמן אמת בחיבור P2P ישיר ומוצפן (WebRTC PeerJS Mesh), ללא צורך בהתקנת אפליקציה וללא תלות בשרתי הקלטה או מאגרים מרכזיים.
 
