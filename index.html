@@ -710,8 +710,59 @@
       z-index: 2000;
       padding: 16px;
     }
-    .qr-modal-overlay.hidden {
-      display: none !important;
+    /* Tactical Quick Bar */
+    .tactical-quick-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .btn-quick-action {
+      background: rgba(17, 23, 34, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #94a3b8;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 7px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-quick-action:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+    .btn-quick-action.sos {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .btn-quick-action.sos:active {
+      background: rgba(239, 68, 68, 0.25);
+    }
+    .btn-quick-action.replay:not(:disabled) {
+      border-color: rgba(6, 182, 212, 0.5);
+      color: var(--cyan);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+      animation: replayPulse 1.8s infinite;
+    }
+    .btn-quick-action:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    @keyframes replayPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(0.98); }
+    }
+    /* Emergency Strobe animation */
+    @keyframes strobeAnim {
+      0%, 100% { background: #090c12; }
+      50% { background: #450a0a; }
+    }
+    .emergency-strobe {
+      animation: strobeAnim 0.3s 6;
     }
   </style>
 </head>
@@ -734,10 +785,15 @@
           <span class="rssi-bar active"></span>
         </div>
         <span class="freq-badge" id="hudFreq">446.006 MHz</span>
+        <span class="freq-badge" id="hudBatt" style="color: var(--green);">🔋 --%</span>
       </div>
 
       <div class="header-tools">
+        <button class="btn-tool" onclick="toggleWakeLock()" id="btnWakeLock" title="מנע כיבוי מסך אוטומטי (Wake Lock)">🔆</button>
+        <button class="btn-tool" onclick="toggleFilterMode()" id="btnFilter" title="מצב שמע: פילטר קשר צבאי / HD">📻</button>
+        <button class="btn-tool" onclick="cycleBoost()" id="btnBoost" title="הגברת ווליום שמע">⚡ 100%</button>
         <button class="btn-tool" onclick="toggleSoundFx()" id="btnFx" title="הפעל/השתק צלילי קשר">🔊</button>
+        <button class="btn-tool hidden" onclick="installPwa()" id="pwaInstallBtn" title="התקן כאפליקציה במסך הבית">📲</button>
         <button class="btn-tool" onclick="toggleHelp()" title="הסבר על הווקי-טוקי">ℹ️</button>
       </div>
     </header>
@@ -933,6 +989,38 @@
           </button>
         </div>
 
+        <!-- Tactical Quick Actions Bar -->
+        <div class="tactical-quick-bar">
+          <button type="button" class="btn-quick-action sos" onclick="triggerSOS()" title="שדר אות אזעקה לשותף">
+            <span>🚨</span>
+            <span>קריאת חירום (SOS)</span>
+          </button>
+          <button type="button" class="btn-quick-action" onclick="triggerRadioCheck()" title="בדוק קליטה וזמן תגובה">
+            <span>📡</span>
+            <span>בדיקת קשר</span>
+          </button>
+          <button type="button" class="btn-quick-action replay" id="btnReplay" onclick="playLastRecorded()" disabled title="השמע מחדש את השידור האחרון שנקלט">
+            <span>⏪</span>
+            <span id="replayBtnText">שמע אחרון</span>
+          </button>
+        </div>
+
+        <!-- Quick Tactical Comms -->
+        <div class="tactical-quick-bar" style="margin-top: 4px;">
+          <button type="button" class="btn-quick-action" onclick="sendCanned('roger')" title="שדר אות רות קיבלתי לשותף">
+            <span>👍</span>
+            <span>רות קיבלתי</span>
+          </button>
+          <button type="button" class="btn-quick-action" onclick="sendCanned('silence')" title="שדר פקודת שקט בקשר">
+            <span>🤫</span>
+            <span>שקט בקשר</span>
+          </button>
+          <button type="button" class="btn-quick-action" onclick="playMorseSOS()" title="שדר אות מורס SOS בינלאומי">
+            <span>⚡</span>
+            <span>מורס SOS</span>
+          </button>
+        </div>
+
         <!-- THE MAIN PUSH-TO-TALK BUTTON -->
         <div class="ptt-wrapper">
           <div class="ptt-housing">
@@ -1047,6 +1135,20 @@
     let wasPaired = false;
     let joinAttemptTimer = null;
 
+    // Advanced Tactical Controls & Replay
+    let boostLevel = 1.0;    // 1.0 = 100%, 1.5 = 150%, 2.0 = 200%
+    let lastAudioBlob = null;
+    let lastAudioUrl = null;
+    let mediaRecorders = {}; // peerId -> MediaRecorder
+    let audioChunks = {};    // peerId -> Array
+    let activeStreams = {};  // peerId -> MediaStream
+    let gainNodes = {};      // peerId -> GainNode
+    let filterNodes = {};    // peerId -> BiquadFilterNode
+    let radioFilterEnabled = true; // Authentic tactical bandpass filter
+    let wakeLock = null;
+    let wakeLockActive = false;
+    let deferredPrompt = null;
+
     // Web Audio Synthesizer & Visualizer
     let audioCtx = null;
     let analyser = null;
@@ -1082,6 +1184,31 @@
           showToast(`הוזמנת לערוץ ${cleanCode} 📡 הכנס שם להצטרפות`);
         }
       }
+
+      // Real Battery API Integration
+      if ('getBattery' in navigator) {
+        navigator.getBattery().then((batt) => {
+          const updateBatt = () => {
+            const pct = Math.round(batt.level * 100);
+            const icon = batt.charging ? '⚡' : '🔋';
+            const el = document.getElementById('hudBatt');
+            if (el) {
+              el.textContent = `${icon} ${pct}%`;
+              el.style.color = pct <= 20 ? 'var(--red)' : pct <= 50 ? 'var(--amber)' : 'var(--green)';
+            }
+          };
+          updateBatt();
+          batt.addEventListener('levelchange', updateBatt);
+          batt.addEventListener('chargingchange', updateBatt);
+        }).catch(() => {});
+      }
+
+      // PWA Install Prompt Listener
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('pwaInstallBtn')?.classList.remove('hidden');
+      });
 
       // Unlock AudioContext on first touch / click anywhere
       const unlockAudio = () => {
@@ -1222,6 +1349,54 @@
       } catch (e) {}
     }
 
+    function playEmergencySOS() {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+
+        for (let i = 0; i < 6; i++) {
+          const t = now + i * 0.15;
+          osc.frequency.setValueAtTime(880, t);
+          osc.frequency.linearRampToValueAtTime(1350, t + 0.075);
+          osc.frequency.linearRampToValueAtTime(880, t + 0.15);
+        }
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.95);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.0);
+      } catch (e) {}
+    }
+
+    function playPip(times = 2) {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        for (let i = 0; i < times; i++) {
+          const t = now + i * 0.09;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1800, t);
+          gain.gain.setValueAtTime(0.18, t);
+          gain.gain.linearRampToValueAtTime(0, t + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.06);
+        }
+      } catch (e) {}
+    }
+
     function haptic(pattern = [25]) {
       if (navigator.vibrate) {
         try { navigator.vibrate(pattern); } catch (e) {}
@@ -1303,6 +1478,8 @@
       conns = {};
       names = {};
       calls = {};
+      activeStreams = {};
+      gainNodes = {};
 
       try {
         peer = new Peer('walkie-' + roomCode, PEER_OPTS);
@@ -1368,6 +1545,8 @@
       conns = {};
       names = {};
       calls = {};
+      activeStreams = {};
+      gainNodes = {};
 
       if (!peer) {
         try {
@@ -1473,6 +1652,8 @@
           delete conns[c.peer];
           delete names[c.peer];
           delete calls[c.peer];
+          delete activeStreams[c.peer];
+          delete gainNodes[c.peer];
           updateLiveSync();
           showToast('שותף התנתק מהקשר ⚠️');
         });
@@ -1482,6 +1663,8 @@
           delete conns[c.peer];
           delete names[c.peer];
           delete calls[c.peer];
+          delete activeStreams[c.peer];
+          delete gainNodes[c.peer];
           updateLiveSync();
         });
       });
@@ -1516,6 +1699,7 @@
     }
 
     function addAudio(s, pid) {
+      activeStreams[pid] = s;
       let a = document.getElementById('a-' + pid);
       if (!a) {
         a = document.createElement('audio');
@@ -1529,6 +1713,32 @@
       a.srcObject = s;
       a.volume = 1.0;
       a.muted = speakerMuted;
+
+      // Web Audio GainNode & Tactical Bandpass Filter routing
+      try {
+        const ctx = getAudioContext();
+        if (ctx) {
+          const src = ctx.createMediaStreamSource(s);
+          const filter = ctx.createBiquadFilter();
+          filter.type = radioFilterEnabled ? 'bandpass' : 'allpass';
+          filter.frequency.value = 1600;
+          filter.Q.value = 1.1;
+
+          const gain = ctx.createGain();
+          gain.gain.value = boostLevel;
+
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+
+          gainNodes[pid] = gain;
+          filterNodes[pid] = filter;
+
+          if (ctx.state === 'running') {
+            a.volume = 0; // Prevent echo while Web Audio outputs boosted & filtered audio
+          }
+        }
+      } catch (e) {}
 
       const playPromise = a.play();
       if (playPromise !== undefined) {
@@ -1570,6 +1780,8 @@
         delete conns[id];
         delete names[id];
         delete calls[id];
+        delete activeStreams[id];
+        delete gainNodes[id];
         updateLiveSync();
       });
 
@@ -1578,6 +1790,8 @@
         delete conns[id];
         delete names[id];
         delete calls[id];
+        delete activeStreams[id];
+        delete gainNodes[id];
         updateLiveSync();
       });
 
@@ -1619,20 +1833,66 @@
         document.getElementById('whoTalk').textContent = who + ' 🔊';
         highlightPeer(from, true);
         haptic([30]);
+        startRemoteRecording(from);
       } else if (d.t === 'talk-e') {
         document.getElementById('voiceStatusBox').className = 'voice-status-box idle';
         document.getElementById('voiceSub').textContent = 'מצב ערוץ:';
         document.getElementById('whoTalk').textContent = 'ערוץ פנוי להאזנה';
         highlightPeer(from, false);
         playRogerBeep();
+        stopRemoteRecording(from);
+      } else if (d.t === 'sos') {
+        const who = d.name || 'השותף';
+        playEmergencySOS();
+        haptic([100, 50, 100, 50, 100, 50, 200]);
+        document.body.classList.add('emergency-strobe');
+        setTimeout(() => document.body.classList.remove('emergency-strobe'), 2400);
+
+        const box = document.getElementById('voiceStatusBox');
+        if (box) box.className = 'voice-status-box transmitting';
+        document.getElementById('voiceSub').textContent = 'התרעת חירום:';
+        document.getElementById('whoTalk').textContent = `🚨 ${who} במצוקה! 🚨`;
+        showToast(`🚨 קריאת חירום דחופה מ-${who}! 🚨`);
+      } else if (d.t === 'radio-check') {
+        if (conns[from]) {
+          try { conns[from].send({ t: 'radio-check-ack', sendTime: d.sendTime, name: myName }); } catch (e) {}
+        }
+        playPip(1);
+        showToast(`בדיקת קשר התקבלה מ-${names[from] || 'שותף'} 📻`);
+      } else if (d.t === 'radio-check-ack') {
+        const rtt = Math.max(1, Date.now() - d.sendTime);
+        playConnectChime();
+        haptic([40, 50, 40]);
+        showToast(`📡 קשר תקין עם ${names[from] || 'שותף'}! זמן תגובה: ${rtt}ms`);
       } else if (d.t === 'peers' && Array.isArray(d.peers)) {
         d.peers.forEach((p) => {
           if (p !== peer?.id && !conns[p]) connectTo(p);
         });
       } else if (d.t === 'ping') {
         if (conns[from]) {
-          try { conns[from].send({ t: 'pong' }); } catch (e) {}
+          try { conns[from].send({ t: 'pong', st: d.st }); } catch (e) {}
         }
+      } else if (d.t === 'pong') {
+        if (d.st) {
+          const rtt = Math.max(1, Date.now() - d.st);
+          updateSignalBars(rtt);
+        }
+      } else if (d.t === 'canned') {
+        const who = d.name || 'שותף';
+        if (d.type === 'roger') {
+          playPip(2);
+          haptic([30, 40]);
+          showToast(`👍 ${who}: "רות קיבלתי!"`);
+        } else if (d.type === 'silence') {
+          playEmergencyTone();
+          haptic([100, 60, 100]);
+          showToast(`🤫 ${who}: "שקט בקשר!"`);
+        }
+      } else if (d.t === 'morse-sos') {
+        const who = d.name || 'שותף';
+        playMorseLocally();
+        haptic([60, 40, 60, 40, 60, 100, 180, 100, 180, 100, 180, 100, 60, 40, 60, 40, 60]);
+        showToast(`⚡ ${who} משדר מורס SOS בינלאומי! (... --- ...)`);
       }
     }
 
@@ -1749,12 +2009,321 @@
       if (tag) tag.textContent = isTalking ? 'משדר 🎙️' : 'מאזין 👂';
     }
 
-    // Ping Heartbeat every 2.5 seconds to keep mobile connections hot
+    // Ping Heartbeat & RTT measurement every 2.5 seconds
     setInterval(() => {
+      const now = Date.now();
       Object.values(conns).forEach((c) => {
-        try { c.send({ t: 'ping' }); } catch (e) {}
+        try { c.send({ t: 'ping', st: now }); } catch (e) {}
       });
     }, 2500);
+
+    function updateSignalBars(rtt) {
+      const bars = document.querySelectorAll('#rssiBars .rssi-bar');
+      const freq = document.getElementById('hudFreq');
+      if (!bars || bars.length < 4) return;
+
+      bars.forEach(b => b.classList.remove('active'));
+      let qual = 'מצוין';
+
+      if (rtt < 120) {
+        bars[0].classList.add('active');
+        bars[1].classList.add('active');
+        bars[2].classList.add('active');
+        bars[3].classList.add('active');
+        qual = 'מצוין';
+      } else if (rtt < 280) {
+        bars[0].classList.add('active');
+        bars[1].classList.add('active');
+        bars[2].classList.add('active');
+        qual = 'טוב';
+      } else if (rtt < 550) {
+        bars[0].classList.add('active');
+        bars[1].classList.add('active');
+        qual = 'בינוני';
+      } else {
+        bars[0].classList.add('active');
+        qual = 'חלש';
+      }
+
+      if (freq) freq.textContent = `446.006 MHz • ${rtt}ms (${qual})`;
+    }
+
+    /* ==========================================================================
+       Tactical Quick Actions: SOS, Radio Check, Volume Boost, Replay
+       ========================================================================== */
+
+    function triggerSOS() {
+      getAudioContext();
+      playEmergencySOS();
+      haptic([100, 50, 100, 50, 100, 50, 200]);
+      document.body.classList.add('emergency-strobe');
+      setTimeout(() => document.body.classList.remove('emergency-strobe'), 2000);
+
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'sos', name: myName }); } catch (e) {}
+      });
+
+      showToast('🚨 אות חירום שודר בערוץ! 🚨');
+    }
+
+    function triggerRadioCheck() {
+      getAudioContext();
+      playPip(2);
+      haptic([30, 40, 30]);
+      showToast('משדר בדיקת קשר... 📡');
+
+      const sendTime = Date.now();
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'radio-check', sendTime: sendTime }); } catch (e) {}
+      });
+    }
+
+    function cycleBoost() {
+      if (boostLevel === 1.0) boostLevel = 1.5;
+      else if (boostLevel === 1.5) boostLevel = 2.0;
+      else boostLevel = 1.0;
+
+      const pct = Math.round(boostLevel * 100);
+      const btn = document.getElementById('btnBoost');
+      if (btn) {
+        btn.textContent = `⚡ ${pct}%`;
+        btn.style.color = boostLevel > 1.0 ? 'var(--amber)' : '#cbd5e1';
+      }
+
+      Object.values(gainNodes).forEach((g) => {
+        try { g.gain.value = boostLevel; } catch (e) {}
+      });
+
+      showToast(`עוצמת שמע: ${pct}% 🔊`);
+      playPip(1);
+    }
+
+    function startRemoteRecording(pid) {
+      const stream = activeStreams[pid];
+      if (!stream || typeof MediaRecorder === 'undefined') return;
+
+      try {
+        audioChunks[pid] = [];
+        const mr = new MediaRecorder(stream);
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunks[pid].push(e.data);
+        };
+        mr.onstop = () => {
+          if (audioChunks[pid] && audioChunks[pid].length > 0) {
+            lastAudioBlob = new Blob(audioChunks[pid], { type: 'audio/webm' });
+            if (lastAudioUrl) URL.revokeObjectURL(lastAudioUrl);
+            lastAudioUrl = URL.createObjectURL(lastAudioBlob);
+
+            const repBtn = document.getElementById('btnReplay');
+            const repText = document.getElementById('replayBtnText');
+            if (repBtn) repBtn.disabled = false;
+            if (repText) repText.textContent = `שמע אחרון 🔊`;
+          }
+        };
+        mr.start(200);
+        mediaRecorders[pid] = mr;
+      } catch (e) {
+        console.warn('MediaRecorder error:', e);
+      }
+    }
+
+    function stopRemoteRecording(pid) {
+      const mr = mediaRecorders[pid];
+      if (mr && mr.state !== 'inactive') {
+        try { mr.stop(); } catch (e) {}
+      }
+    }
+
+    function playLastRecorded() {
+      if (!lastAudioUrl) {
+        showToast('אין שידור אחרון להשמעה');
+        return;
+      }
+      getAudioContext();
+      playChirp();
+      showToast('משמיע שידור אחרון... 📻');
+
+      const replayAudio = new Audio(lastAudioUrl);
+      replayAudio.volume = Math.min(1.0, 1.0 * boostLevel);
+      replayAudio.play().then(() => {
+        const box = document.getElementById('voiceStatusBox');
+        if (box) box.className = 'voice-status-box receiving';
+        document.getElementById('voiceSub').textContent = 'השמעה חוזרת:';
+        document.getElementById('whoTalk').textContent = 'שידור מוקלט ⏪';
+      }).catch(err => {
+        console.warn('Replay play error:', err);
+      });
+
+      replayAudio.onended = () => {
+        playRogerBeep();
+        const box = document.getElementById('voiceStatusBox');
+        if (box) box.className = 'voice-status-box idle';
+        document.getElementById('voiceSub').textContent = 'מצב ערוץ:';
+        document.getElementById('whoTalk').textContent = 'ערוץ פנוי להאזנה';
+      };
+    }
+
+    function installPwa() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+          deferredPrompt = null;
+          document.getElementById('pwaInstallBtn')?.classList.add('hidden');
+        });
+      } else {
+        showToast('להתקנה: לחץ על שלוש הנקודות בדפדפן > "הוסף למסך הבית" 📲');
+      }
+    }
+
+    /* Screen Wake Lock (Keep display awake during comms) */
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLockActive = true;
+          updateWakeLockUI();
+          wakeLock.addEventListener('release', () => {
+            wakeLockActive = false;
+            updateWakeLockUI();
+          });
+        } catch (e) {
+          console.log('WakeLock not granted:', e);
+        }
+      }
+    }
+
+    async function toggleWakeLock() {
+      if (wakeLockActive && wakeLock) {
+        try { await wakeLock.release(); } catch (e) {}
+        wakeLock = null;
+        wakeLockActive = false;
+        showToast('נעילת מסך כבויה (המסך ייכבה כרגיל) 💤');
+      } else {
+        await requestWakeLock();
+        showToast(wakeLockActive ? 'מסך פעיל תמיד - לא ייכבה במהלך השיחה 🔆' : 'המכשיר אינו תומך ב-Wake Lock');
+      }
+      updateWakeLockUI();
+    }
+
+    function updateWakeLockUI() {
+      const btn = document.getElementById('btnWakeLock');
+      if (btn) {
+        btn.style.color = wakeLockActive ? '#facc15' : '#94a3b8';
+        btn.title = wakeLockActive ? 'מסך פעיל תמיד (דולק)' : 'הפעל השארת מסך פעיל';
+      }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLockActive && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    });
+
+    /* Tactical Radio Bandpass Filter vs HD Mode */
+    function toggleFilterMode() {
+      radioFilterEnabled = !radioFilterEnabled;
+      const btn = document.getElementById('btnFilter');
+      if (btn) {
+        btn.textContent = radioFilterEnabled ? '📻' : '✨';
+        btn.title = radioFilterEnabled ? 'פילטר קשר צבאי (מופעל)' : 'סאונד HD צלול (מופעל)';
+      }
+      Object.values(filterNodes).forEach((f) => {
+        try {
+          f.type = radioFilterEnabled ? 'bandpass' : 'allpass';
+        } catch (e) {}
+      });
+      showToast(radioFilterEnabled ? 'מצב שמע: פילטר קשר צבאי אותנטי 📻' : 'מצב שמע: צליל HD צלול ✨');
+      playPip(1);
+    }
+
+    /* Quick Tactical Comms (Roger That & Radio Silence) */
+    function sendCanned(type) {
+      getAudioContext();
+      if (type === 'roger') {
+        playPip(2);
+        haptic([30, 40]);
+        showToast('שידרת: רות קיבלתי! 👍');
+        Object.values(conns).forEach((c) => {
+          try { c.send({ t: 'canned', type: 'roger', name: myName }); } catch (e) {}
+        });
+      } else if (type === 'silence') {
+        playEmergencyTone();
+        haptic([100, 60, 100]);
+        showToast('שידרת פקודת שקט בקשר! 🤫');
+        Object.values(conns).forEach((c) => {
+          try { c.send({ t: 'canned', type: 'silence', name: myName }); } catch (e) {}
+        });
+      }
+    }
+
+    function playEmergencyTone() {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.setValueAtTime(380, now + 0.12);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.38);
+      } catch (e) {}
+    }
+
+    /* Morse Code SOS Generator (... --- ...) */
+    function playMorseSOS() {
+      getAudioContext();
+      playMorseLocally();
+      haptic([60, 40, 60, 40, 60, 100, 180, 100, 180, 100, 180, 100, 60, 40, 60, 40, 60]);
+      showToast('⚡ אות מורס SOS בינלאומי שודר בערוץ! (... --- ...)');
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'morse-sos', name: myName }); } catch (e) {}
+      });
+    }
+
+    function playMorseLocally() {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const u = 0.07;
+        const freq = 750;
+
+        const pattern = [
+          // S (...)
+          { on: 1, d: 1 }, { on: 0, d: 1 }, { on: 1, d: 1 }, { on: 0, d: 1 }, { on: 1, d: 1 }, { on: 0, d: 3 },
+          // O (---)
+          { on: 1, d: 3 }, { on: 0, d: 1 }, { on: 1, d: 3 }, { on: 0, d: 1 }, { on: 1, d: 3 }, { on: 0, d: 3 },
+          // S (...)
+          { on: 1, d: 1 }, { on: 0, d: 1 }, { on: 1, d: 1 }, { on: 0, d: 1 }, { on: 1, d: 1 }
+        ];
+
+        let t = now + 0.05;
+        pattern.forEach((p) => {
+          if (p.on) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.2, t + 0.005);
+            gain.gain.linearRampToValueAtTime(0, t + p.d * u - 0.005);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + p.d * u);
+          }
+          t += p.d * u;
+        });
+      } catch (e) {}
+    }
 
     /* ==========================================================================
        Talk & PTT Audio Control
@@ -1763,6 +2332,7 @@
     function goTalk() {
       showScreen('talkScreen');
       updateLiveSync();
+      requestWakeLock();
       if (!myStream) getMic(true);
     }
 
@@ -1971,7 +2541,16 @@
     }
 
     function toggleHelp() {
-      alert('📻 ווקי-טוקי טקטי:\n\n1. לחץ והחזק את הכפתור האדום או מקש Space כדי לדבר.\n2. שחרר כדי לחזור להאזנה.\n3. כאשר 2 אנשים מחוברים, החיווי יהפוך לירוק זוהר.\n4. השיחה עוברת ישירות ומאובטחת (WebRTC P2P).');
+      alert('📻 ווקי-טוקי טקטי - מדריך הפעלה מהיר:\n\n' +
+        '1. 🎙️ דיבור: לחץ והחזק את הכפתור האדום (או מקש Space במקלדת).\n' +
+        '2. 🟢 סנכרון חי: ברגע ששותף מתחבר, החיווי הופך לירוק זוהר.\n' +
+        '3. 🔆 מסך ער: לחץ על 🔆 למניעת כיבוי מסך אוטומטי במכשירים ניידים.\n' +
+        '4. 📻 פילטר קשר / HD: לחץ על 📻 למעבר בין פילטר קשר צבאי אותנטי לצליל HD צלול.\n' +
+        '5. ⚡ הגברת ווליום: לחץ על ⚡ להגברה של 150% או 200% במקומות רועשים.\n' +
+        '6. 🚨 חירום (SOS): שולח אות אזעקה דו-טונית מהבהב לכל המשתתפים.\n' +
+        '7. 📡 בדיקת קשר: מודד זמן תגובה (Ping RTT) ומעדכן את פסי הקליטה.\n' +
+        '8. ⏪ שמע אחרון: מקליט אוטומטית את השידור האחרון ומאפשר להשמיעו שוב.\n' +
+        '9. 👍 רות קיבלתי / 🤫 שקט בקשר / ⚡ מורס SOS: קריאות קשר טקטיות מהירות.');
     }
 
     let toastTimer = null;

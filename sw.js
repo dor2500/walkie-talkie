@@ -3,16 +3,11 @@
  * Provides offline caching for ultra-fast startup and PWA experience.
  */
 
-const CACHE_NAME = 'walkie-talkie-v1';
+const CACHE_NAME = 'walkie-talkie-v1.4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './assets/css/style.css',
-  './assets/js/audio.js',
-  './assets/js/webrtc.js',
-  './assets/js/ui.js',
-  './assets/js/app.js',
   './assets/icons/icon.svg',
   './assets/icons/favicon.svg'
 ];

@@ -1,6 +1,6 @@
 {
   "name": "tactical-walkie-talkie",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Tactical WebRTC Walkie-Talkie P2P Voice Chat in the Browser",
   "main": "index.html",
   "scripts": {
