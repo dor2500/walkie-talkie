@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>ווקי-טוקי טקטי | Tactical PTT Walkie-Talkie</title>
+  
+  <!-- Google Fonts: Rubik & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Tactical Top Status Bar -->
+    <header class="tactical-header">
+      <div class="header-status">
+        <span class="antenna-icon" id="antennaIcon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 20h20M5 20v-8a7 7 0 0 1 14 0v8M9 20v-4a3 3 0 0 1 6 0v4M12 4v4"/>
+          </svg>
+        </span>
+        <div class="signal-bars" id="signalBars">
+          <span class="bar active"></span>
+          <span class="bar active"></span>
+          <span class="bar active"></span>
+          <span class="bar active"></span>
+        </div>
+        <span class="frequency-tag" id="freqTag">446.006 MHz</span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Sound FX toggle button -->
+        <button id="soundFxBtn" class="icon-btn" title="צלילי קשר (ביפים ורעש סטטי)" aria-label="Toggle Sound Effects">
+          <svg id="soundFxOnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <svg id="soundFxOffIcon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        </button>
+
+        <!-- Help / Info Modal Toggle -->
+        <button id="infoBtn" class="icon-btn" title="הוראות שימוש" aria-label="Help">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Screens -->
+    <main class="screen-wrapper">
+
+      <!-- SCREEN 1: Name Input -->
+      <section id="nameScreen" class="screen active">
+        <div class="tactical-card hero-card">
+          <div class="radio-graphic">
+            <div class="radio-antenna">
+              <span class="antenna-wave wave-1"></span>
+              <span class="antenna-wave wave-2"></span>
+              <span class="antenna-wave wave-3"></span>
+            </div>
+            <div class="walkie-badge">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8">
+                <rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect>
+                <circle cx="12" cy="14" r="4"></circle>
+                <line x1="8" y1="6" x2="16" y2="6"></line>
+                <line x1="12" y1="12" x2="12" y2="16"></line>
+                <line x1="10" y1="14" x2="14" y2="14"></line>
+              </svg>
+            </div>
+          </div>
+
+          <h1 class="main-title">ווקי-טוקי טקטי</h1>
+          <p class="subtitle">רשת קשר P2P מוצפנת ומיידית בזמן אמת ללא שרתים מרכזיים</p>
+
+          <form id="nameForm" class="form-group" onsubmit="event.preventDefault(); goWelcome();">
+            <label for="myName" class="input-label">כינוי / שם בקשר:</label>
+            <div class="input-wrapper">
+              <input 
+                id="myName" 
+                type="text" 
+                placeholder="למשל: נשר 1, יוחאי, סבא..." 
+                maxlength="20" 
+                autocomplete="nickname" 
+                required
+              />
+              <span class="input-glow"></span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-glow mt-4">
+              <span>התחבר לרשת הקשר</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+          </form>
+
+          <div class="features-pill-row">
+            <span class="feature-tag">⚡ ללא שיהוי</span>
+            <span class="feature-tag">🔊 ביפים צבאיים</span>
+            <span class="feature-tag">📷 סורק QR</span>
+            <span class="feature-tag">🔒 WebRTC ישיר</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: Welcome / Choose Role -->
+      <section id="welcomeScreen" class="screen hidden">
+        <div class="tactical-card">
+          <div class="user-badge">
+            <div class="user-avatar" id="welcomeAvatar">א</div>
+            <div class="user-details">
+              <span class="user-label">מחובר כעת בתור</span>
+              <h2 class="user-name" id="helloName">משתמש</h2>
+            </div>
+            <button class="btn-text-small" onclick="goBackToName()" title="החלף שם">החלף</button>
+          </div>
+
+          <div class="role-selector">
+            <h3 class="section-title">בחר פעולה:</h3>
+
+            <button onclick="goHost()" class="role-card host-role">
+              <div class="role-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+              </div>
+              <div class="role-info">
+                <strong>פתח רשת קשר חדשה</strong>
+                <span>אני המארח - מקבל קוד חדר וברקוד להפצה</span>
+              </div>
+              <div class="role-arrow">←</div>
+            </button>
+
+            <button onclick="goJoin()" class="role-card join-role">
+              <div class="role-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                  <polyline points="10 17 15 12 10 7"></polyline>
+                  <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+              </div>
+              <div class="role-info">
+                <strong>הצטרף לרשת קיימת</strong>
+                <span>הכנס קוד ערוץ או סרוק ברקוד QR במצלמה</span>
+              </div>
+              <div class="role-arrow">←</div>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: Host Room Screen -->
+      <section id="hostScreen" class="screen hidden">
+        <div class="tactical-card">
+          <div class="screen-header">
+            <span class="badge badge-amber">מארח ערוץ קשר</span>
+            <span class="host-name-tag" id="hName"></span>
+          </div>
+
+          <div class="lcd-display mt-3">
+            <span class="lcd-label">קוד ערוץ (CHANNEL CODE):</span>
+            <div class="lcd-code-row">
+              <div id="roomCode" class="lcd-code">------</div>
+              <button class="btn-copy" onclick="copyRoomCode()" title="העתק קוד" id="copyCodeBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="lcd-status-line">
+              <span class="pulsing-dot green"></span>
+              <span id="hostStatusText">יוצר ערוץ קשר מוצפן...</span>
+            </div>
+          </div>
+
+          <!-- QR Code Frame -->
+          <div class="qr-container-outer mt-4">
+            <p class="qr-helper-text">חברים יכולים לסרוק ישירות כדי להצטרף:</p>
+            <div class="qr-box">
+              <div id="qrcode"></div>
+            </div>
+          </div>
+
+          <!-- Quick Share Buttons -->
+          <div class="share-row mt-3">
+            <button class="btn btn-secondary share-btn" onclick="shareViaWebShare()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              <span>שתף בוואטסאפ / קישור</span>
+            </button>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-grid mt-4">
+            <button onclick="goTalk()" class="btn btn-success btn-large">
+              <span>🚀 כניסה לעמדת השידור</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <button onclick="goBackToWelcome()" class="btn btn-outline">חזרה</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 4: Join Room Screen -->
+      <section id="joinScreen" class="screen hidden">
+        <div class="tactical-card">
+          <div class="screen-header">
+            <span class="badge badge-cyan">הצטרפות לערוץ קשר</span>
+            <span class="join-name-tag" id="jName"></span>
+          </div>
+
+          <!-- QR Scanner Trigger -->
+          <div class="scan-section mt-4">
+            <button id="scanToggleBtn" onclick="toggleScanner()" class="btn btn-scan w-full">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <span id="scanBtnText">📷 סרוק ברקוד QR במצלמה</span>
+            </button>
+            <div id="readerWrapper" class="reader-wrapper hidden mt-3">
+              <div id="reader"></div>
+              <button class="btn btn-sm btn-outline mt-2 w-full" onclick="stopScanner()">סגור מצלמה ✕</button>
+            </div>
+          </div>
+
+          <div class="divider"><span>או הקלד קוד ידנית</span></div>
+
+          <form id="joinForm" onsubmit="event.preventDefault(); doJoin();">
+            <div class="form-group">
+              <label for="codeInput" class="input-label">קוד ערוץ (6 תווים):</label>
+              <div class="input-wrapper">
+                <input 
+                  id="codeInput" 
+                  type="text" 
+                  placeholder="למשל: ABC123" 
+                  maxlength="10" 
+                  class="code-input text-center" 
+                  autocomplete="off"
+                  autocapitalize="characters"
+                />
+              </div>
+            </div>
+
+            <div class="action-grid mt-4">
+              <button type="submit" id="joinSubmitBtn" class="btn btn-primary btn-large">
+                <span>התחבר לערוץ</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button type="button" onclick="goBackToWelcome()" class="btn btn-outline">חזרה</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- SCREEN 5: Tactical Talk / Walkie-Talkie Console -->
+      <section id="talkScreen" class="screen hidden">
+        <div class="radio-console">
+
+          <!-- Top Radio LCD HUD -->
+          <div class="console-lcd">
+            <div class="lcd-top-bar">
+              <span class="lcd-pill channel-pill">
+                <span class="dot-live"></span>
+                ערוץ <span id="cMini">------</span>
+              </span>
+              <span class="lcd-pill user-pill" id="myShow">משתמש</span>
+              <span class="lcd-pill peer-count-pill" id="peerCountBadge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span id="cnt">1</span> ברשת
+              </span>
+            </div>
+
+            <!-- Dynamic Transmission Banner -->
+            <div id="transmissionBanner" class="transmission-banner idle">
+              <div class="trans-indicator">
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+              </div>
+              <div class="trans-text-box">
+                <span class="trans-sub" id="transSub">מצב ערוץ:</span>
+                <h3 class="trans-title" id="whoTalk">ערוץ פנוי להאזנה</h3>
+              </div>
+            </div>
+
+            <!-- Audio Waveform Canvas Visualizer -->
+            <div class="visualizer-container">
+              <canvas id="visualizerCanvas" width="340" height="42"></canvas>
+            </div>
+          </div>
+
+          <!-- Tactical Mic Controls & Modes -->
+          <div class="mic-mode-toolbar">
+            <div class="mode-toggles">
+              <button id="modePttBtn" class="mode-btn active" onclick="setTalkMode('ptt')" title="החזק לדבר">
+                <span>🔘 החזק (PTT)</span>
+              </button>
+              <button id="modeLockBtn" class="mode-btn" onclick="setTalkMode('lock')" title="לחיצה להפעלה ולחיצה לכיבוי">
+                <span>🔒 נעילת שידור</span>
+              </button>
+            </div>
+            
+            <button id="muteSpeakerBtn" class="icon-btn-compact" onclick="toggleSpeakerMute()" title="השתקת רמקול">
+              <svg id="spkOn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <svg id="spkOff" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- THE MAIN PUSH-TO-TALK BUTTON -->
+          <div class="ptt-assembly">
+            <div class="ptt-outer-ring" id="pttOuterRing">
+              <div class="ptt-pulse-wave wave-a"></div>
+              <div class="ptt-pulse-wave wave-b"></div>
+              
+              <button 
+                id="pttButton" 
+                class="ptt-btn" 
+                aria-label="Push to talk button"
+              >
+                <div class="ptt-inner-core">
+                  <div class="ptt-mic-icon">
+                    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                      <line x1="12" y1="19" x2="12" y2="23"></line>
+                      <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                  </div>
+                  <span class="ptt-primary-text" id="pttMainText">לחץ ודבר</span>
+                  <span class="ptt-sub-text" id="pttSubText">החזק כדי לשדר</span>
+                </div>
+              </button>
+            </div>
+            
+            <p class="ptt-keyboard-hint">
+              <kbd>רווח Space</kbd> במקלדת מחזיק את השידור
+            </p>
+          </div>
+
+          <!-- Connected Peers Collapsible Section -->
+          <div class="peers-drawer">
+            <div class="peers-header" onclick="togglePeersDrawer()">
+              <div class="drawer-title">
+                <span class="online-indicator"></span>
+                <span>משתמשים בערוץ הקשר (<span id="drawerCount">1</span>)</span>
+              </div>
+              <span id="drawerChevron" class="drawer-chevron">▼</span>
+            </div>
+            
+            <div id="peersListContainer" class="peers-list-content">
+              <div id="peers" class="peers-grid">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Tactical Footer -->
+          <div class="console-footer">
+            <button class="footer-btn" onclick="openShareModal()" title="שיתוף והזמנת חברים">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              <span>הזמן חברים</span>
+            </button>
+
+            <button class="footer-btn" onclick="openQrModal()" title="הצג ברקוד חדר">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <span>קוד QR</span>
+            </button>
+
+            <button class="footer-btn disconnect-btn" onclick="confirmDisconnect()" title="התנתק מהערוץ">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                <line x1="12" y1="2" x2="12" y2="12"></line>
+              </svg>
+              <span>התנתק</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Hidden Audio Streams Holder -->
+    <div id="audios" class="hidden-audio-rack"></div>
+
+    <!-- Modals & Overlays -->
+
+    <!-- Info / Instructions Modal -->
+    <div id="infoModal" class="modal-overlay hidden" onclick="closeInfoModal(event)">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>📻 מדריך ווקי-טוקי טקטי</h3>
+          <button class="modal-close" onclick="closeInfoModalDirect()">✕</button>
+        </div>
+        <div class="modal-body">
+          <ul class="guide-list">
+            <li><strong>🎙️ דיבור (PTT):</strong> לחץ והחזק את הכפתור האדום או מקש <code>Space</code> כדי לשדר. שחרר כדי לחזור להאזנה.</li>
+            <li><strong>🔒 נעילת שידור:</strong> לחץ על "נעילת שידור" כדי להפעיל דיבור חופשי ללא צורך בהחזקה רציפה של המסך.</li>
+            <li><strong>📶 רשת ישירה:</strong> האודיו עובר בצורה מוצפנת וישירה (P2P WebRTC) בין הטלפונים/מחשבים ללא שרת מאחסן.</li>
+            <li><strong>🔊 סאונד טקטי:</strong> כולל ביפ תחילת שידור, רעש סטטי אמיתי בסיום שידור ורטט טקטי במכשירים תומכים.</li>
+            <li><strong>📱 בטלפונים:</strong> מומלץ להוסיף את הדף למסך הבית (Add to Home Screen) לחוויית אפליקציה מלאה.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Modal in Talk Screen -->
+    <div id="qrModal" class="modal-overlay hidden" onclick="closeQrModal(event)">
+      <div class="modal-box text-center">
+        <div class="modal-header">
+          <h3>הצטרפות לערוץ <span id="qrModalCode" class="text-amber"></span></h3>
+          <button class="modal-close" onclick="closeQrModalDirect()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="qr-box mx-auto my-3">
+            <div id="modalQrCode"></div>
+          </div>
+          <p class="text-sm text-dim">סרקו כדי להצטרף מיידית לערוץ הקשר</p>
+          <button class="btn btn-primary mt-3 w-full" onclick="copyDirectLink()">
+            העתק קישור ישיר לערוץ 📋
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Overlay -->
+    <div id="toastNotification" class="toast-box hidden">
+      <span id="toastIcon">✨</span>
+      <span id="toastMsg">הודעה</span>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
