@@ -3,503 +3,1742 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0d14">
+  <meta name="theme-color" content="#090c12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>ווקי-טוקי טקטי | Tactical PTT Walkie-Talkie</title>
-  
-  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
-  <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-  <link rel="manifest" href="manifest.json">
-  
+  <title>ווקי טוקי טקטי - שיחות קשר מיידיות</title>
+
   <!-- Google Fonts: Rubik & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  
-  <!-- External Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Core Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  
-  <link rel="stylesheet" href="assets/css/style.css">
+
+  <style>
+    :root {
+      --bg-chassis: #090c12;
+      --bg-panel: #111722;
+      --bg-lcd: #07120d;
+      --border-lcd: #143b2a;
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.4);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.5);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.5);
+      --cyan: #06b6d4;
+      --font-main: 'Rubik', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background: var(--bg-chassis);
+      color: #f8fafc;
+      font-family: var(--font-main);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.1) 0%, transparent 65%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 24px 24px, 24px 24px;
+    }
+
+    .app-frame {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px 20px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      position: relative;
+    }
+
+    /* Top Radio Casing Header */
+    .radio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(17, 23, 34, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 8px 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-signals {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .antenna-icon {
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+    }
+
+    .rssi-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 14px;
+    }
+
+    .rssi-bar {
+      width: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 1px;
+    }
+    .rssi-bar:nth-child(1) { height: 4px; }
+    .rssi-bar:nth-child(2) { height: 7px; }
+    .rssi-bar:nth-child(3) { height: 10px; }
+    .rssi-bar:nth-child(4) { height: 14px; }
+    .rssi-bar.active {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    .freq-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 7px;
+      border-radius: 6px;
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .header-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-tool {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-tool:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    /* Screen Container */
+    .screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .hidden { display: none !important; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .radio-card {
+      background: rgba(17, 23, 34, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 22px 18px;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+    .radio-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+    }
+
+    /* Inputs & Buttons */
+    .name-input {
+      width: 100%;
+      background: #090d14;
+      border: 2px solid var(--amber);
+      color: #fff;
+      font-family: var(--font-main);
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 14px;
+      border-radius: 14px;
+      outline: none;
+      box-shadow: 0 0 15px var(--amber-glow);
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .name-input:focus {
+      border-color: #fde047;
+      box-shadow: 0 0 20px rgba(250, 204, 21, 0.6);
+    }
+
+    .btn-action {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 15px 20px;
+      border-radius: 14px;
+      font-family: var(--font-main);
+      font-size: 1.05rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 12px;
+    }
+    .btn-action:active {
+      transform: scale(0.98);
+    }
+
+    .btn-amber {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      box-shadow: 0 4px 18px var(--amber-glow);
+    }
+    .btn-green {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #000;
+      box-shadow: 0 4px 18px var(--green-glow);
+    }
+    .btn-dark {
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Role selection cards */
+    .role-btn {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      background: #0d121c;
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 16px 14px;
+      cursor: pointer;
+      text-align: right;
+      color: #fff;
+      margin-top: 12px;
+      transition: all 0.2s;
+    }
+    .role-btn:hover, .role-btn:active {
+      border-color: var(--amber);
+      transform: translateY(-2px);
+      background: #141c2c;
+    }
+    .role-icon {
+      font-size: 2rem;
+    }
+    .role-info strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 2px;
+    }
+    .role-info span {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    /* LCD Screen Display */
+    .lcd-screen {
+      background: var(--bg-lcd);
+      border: 2px solid var(--border-lcd);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9), 0 0 15px rgba(16, 185, 129, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    .lcd-screen::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
+      pointer-events: none;
+    }
+
+    .lcd-code {
+      font-family: var(--font-mono);
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 6px;
+      color: var(--amber);
+      text-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+      text-align: center;
+      margin: 4px 0;
+    }
+
+    /* Connection status badge (2-person detector) */
+    .connect-radar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-top: 8px;
+      transition: all 0.3s;
+    }
+    .connect-radar.waiting {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amber);
+      border: 1px dashed rgba(245, 158, 11, 0.4);
+    }
+    .connect-radar.paired {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid var(--green);
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+      animation: pulseGlow 1.8s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+      50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    /* QR Box */
+    .qr-frame {
+      background: #fff;
+      padding: 10px;
+      border-radius: 14px;
+      width: fit-content;
+      margin: 14px auto 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+    .qr-frame img, .qr-frame canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Talk Screen Components */
+    .talk-hud {
+      background: var(--bg-lcd);
+      border: 2px solid var(--border-lcd);
+      border-radius: 16px;
+      padding: 10px 12px;
+      box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.9);
+      position: relative;
+    }
+
+    .hud-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.74rem;
+      color: #94a3b8;
+      font-family: var(--font-mono);
+      margin-bottom: 8px;
+    }
+    .hud-pill {
+      background: rgba(0, 0, 0, 0.45);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .hud-pill.active-channel {
+      color: var(--amber);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .hud-pill.paired-count {
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    /* Talking banner */
+    .voice-status-box {
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+    .voice-status-box.idle {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    .voice-status-box.transmitting {
+      background: rgba(239, 68, 68, 0.25);
+      border: 1px solid var(--red);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+    }
+    .voice-status-box.receiving {
+      background: rgba(16, 185, 129, 0.25);
+      border: 1px solid var(--green);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+    }
+
+    .audio-waves-indicator {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 22px;
+    }
+    .wave-line {
+      width: 4px;
+      height: 8px;
+      border-radius: 2px;
+      background: #64748b;
+    }
+    .voice-status-box.transmitting .wave-line {
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      animation: waveDance 0.5s infinite ease-in-out alternate;
+    }
+    .voice-status-box.receiving .wave-line {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: waveDance 0.7s infinite ease-in-out alternate;
+    }
+    .wave-line:nth-child(2) { animation-delay: 0.15s; }
+    .wave-line:nth-child(3) { animation-delay: 0.3s; }
+    .wave-line:nth-child(4) { animation-delay: 0.45s; }
+
+    @keyframes waveDance {
+      from { height: 6px; }
+      to { height: 22px; }
+    }
+
+    .voice-text {
+      flex: 1;
+      text-align: right;
+    }
+    .voice-sub {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      display: block;
+    }
+    .voice-who {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .voice-status-box.transmitting .voice-who { color: #fca5a5; }
+    .voice-status-box.receiving .voice-who { color: #86efac; }
+
+    /* Visualizer canvas */
+    .viz-canvas-box {
+      margin-top: 8px;
+      height: 38px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    #visualizerCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Talk Mode Switcher */
+    .mode-switch-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111722;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 10px;
+    }
+    .mode-pills {
+      display: flex;
+      gap: 6px;
+    }
+    .mode-tab {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .mode-tab.active {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: var(--amber);
+      color: var(--amber);
+    }
+
+    /* THE BIG SKEUOMORPHIC PTT BUTTON */
+    .ptt-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 0 10px;
+    }
+
+    .ptt-housing {
+      position: relative;
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #1e293b 30%, #0d121c 100%);
+      padding: 10px;
+      box-shadow: 
+        0 12px 35px rgba(0, 0, 0, 0.8),
+        inset 0 3px 6px rgba(255, 255, 255, 0.1),
+        inset 0 -5px 10px rgba(0, 0, 0, 0.7);
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ptt-button {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #e11d48, #b91c1c 60%, #7f1d1d);
+      color: #fff;
+      cursor: pointer;
+      outline: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      box-shadow: 
+        0 8px 24px rgba(225, 29, 72, 0.45),
+        inset 0 3px 6px rgba(255, 255, 255, 0.35),
+        inset 0 -6px 12px rgba(0, 0, 0, 0.5);
+      transition: transform 0.08s ease, background 0.15s ease;
+      touch-action: none;
+    }
+    .ptt-button:hover {
+      background: linear-gradient(145deg, #f43f5e, #dc2626 60%, #991b1b);
+    }
+    .ptt-button.active, .ptt-button:active {
+      transform: scale(0.94) translateY(3px);
+      background: linear-gradient(145deg, #10b981, #059669 60%, #064e3b);
+      box-shadow: 
+        0 4px 15px rgba(16, 185, 129, 0.6),
+        inset 0 4px 8px rgba(0, 0, 0, 0.6),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.2);
+    }
+
+    .ptt-label {
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: -0.3px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    }
+    .ptt-sub {
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.75);
+      font-weight: 600;
+    }
+
+    .ptt-hint {
+      margin-top: 10px;
+      font-size: 0.74rem;
+      color: #64748b;
+      text-align: center;
+    }
+    .ptt-hint kbd {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      padding: 1.5px 6px;
+      font-family: var(--font-mono);
+      color: #cbd5e1;
+    }
+
+    /* Connected peers list */
+    .peers-box {
+      background: #0d121c;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .peers-box-title {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .peer-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin-top: 4px;
+    }
+    .peer-item.talking {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--green);
+    }
+    .peer-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .peer-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .peer-status.online {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    /* Footer actions */
+    .footer-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 10px;
+    }
+    .btn-foot {
+      background: #111722;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      padding: 8px;
+      border-radius: 12px;
+      font-family: var(--font-main);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .btn-foot:hover {
+      border-color: var(--amber);
+      color: #fff;
+    }
+    .btn-foot.danger:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Toast overlay */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111722;
+      border: 1px solid var(--amber);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px var(--amber-glow);
+      z-index: 1000;
+      animation: toastAnim 0.25s ease-out;
+    }
+    @keyframes toastAnim {
+      from { opacity: 0; transform: translate(-50%, 15px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+  </style>
 </head>
 <body>
-  <div class="app-container">
-    
-    <!-- Tactical Top Status Bar -->
-    <header class="tactical-header">
-      <div class="header-status">
-        <span class="antenna-icon" id="antennaIcon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+  <div class="app-frame">
+
+    <!-- Top Radio Bar -->
+    <header class="radio-header">
+      <div class="header-signals">
+        <span class="antenna-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M2 20h20M5 20v-8a7 7 0 0 1 14 0v8M9 20v-4a3 3 0 0 1 6 0v4M12 4v4"/>
           </svg>
         </span>
-        <div class="signal-bars" id="signalBars">
-          <span class="bar active"></span>
-          <span class="bar active"></span>
-          <span class="bar active"></span>
-          <span class="bar active"></span>
+        <div class="rssi-bars" id="rssiBars">
+          <span class="rssi-bar active"></span>
+          <span class="rssi-bar active"></span>
+          <span class="rssi-bar active"></span>
+          <span class="rssi-bar active"></span>
         </div>
-        <span class="frequency-tag" id="freqTag">446.006 MHz</span>
+        <span class="freq-badge" id="hudFreq">446.006 MHz</span>
       </div>
 
-      <div class="header-actions">
-        <!-- Sound FX toggle button -->
-        <button id="soundFxBtn" class="icon-btn" title="צלילי קשר (ביפים ורעש סטטי)" aria-label="Toggle Sound Effects">
-          <svg id="soundFxOnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-          </svg>
-          <svg id="soundFxOffIcon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <line x1="23" y1="9" x2="17" y2="15"></line>
-            <line x1="17" y1="9" x2="23" y2="15"></line>
-          </svg>
-        </button>
-
-        <!-- Help / Info Modal Toggle -->
-        <button id="infoBtn" class="icon-btn" title="הוראות שימוש" aria-label="Help">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-          </svg>
-        </button>
+      <div class="header-tools">
+        <button class="btn-tool" onclick="toggleSoundFx()" id="btnFx" title="הפעל/השתק צלילי קשר">🔊</button>
+        <button class="btn-tool" onclick="toggleHelp()" title="הסבר על הווקי-טוקי">ℹ️</button>
       </div>
     </header>
 
-    <!-- Main Content Screens -->
-    <main class="screen-wrapper">
+    <!-- SCREEN 1: Name Input -->
+    <div id="nameScreen" class="screen">
+      <div class="radio-card text-center" style="margin: auto 0; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 6px;">📻</div>
+        <h1 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 4px;">ווקי-טוקי טקטי</h1>
+        <p style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 20px;">רשת קשר P2P ישירה ללא שרתים מרכזיים</p>
 
-      <!-- SCREEN 1: Name Input -->
-      <section id="nameScreen" class="screen active">
-        <div class="tactical-card hero-card">
-          <div class="radio-graphic">
-            <div class="radio-antenna">
-              <span class="antenna-wave wave-1"></span>
-              <span class="antenna-wave wave-2"></span>
-              <span class="antenna-wave wave-3"></span>
-            </div>
-            <div class="walkie-badge">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8">
-                <rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect>
-                <circle cx="12" cy="14" r="4"></circle>
-                <line x1="8" y1="6" x2="16" y2="6"></line>
-                <line x1="12" y1="12" x2="12" y2="16"></line>
-                <line x1="10" y1="14" x2="14" y2="14"></line>
-              </svg>
-            </div>
-          </div>
+        <input 
+          id="myName" 
+          type="text" 
+          placeholder="כתוב את השם שלך (למשל: סבא)" 
+          class="name-input" 
+          maxlength="20"
+          autocomplete="nickname"
+          onkeydown="if(event.key==='Enter')goWelcome()"
+        />
 
-          <h1 class="main-title">ווקי-טוקי טקטי</h1>
-          <p class="subtitle">רשת קשר P2P מוצפנת ומיידית בזמן אמת ללא שרתים מרכזיים</p>
-
-          <form id="nameForm" class="form-group" onsubmit="return handleNameSubmit(event);">
-            <label for="myName" class="input-label">כינוי / שם בקשר:</label>
-            <div class="input-wrapper">
-              <input 
-                id="myName" 
-                type="text" 
-                placeholder="למשל: נשר 1, יוחאי, סבא..." 
-                maxlength="20" 
-                autocomplete="nickname" 
-                required
-              />
-              <span class="input-glow"></span>
-            </div>
-            <button type="button" onclick="handleNameSubmit(event)" class="btn btn-primary btn-glow mt-4">
-              <span>התחבר לרשת הקשר</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-            </button>
-          </form>
-
-          <div class="features-pill-row">
-            <span class="feature-tag">⚡ ללא שיהוי</span>
-            <span class="feature-tag">🔊 ביפים צבאיים</span>
-            <span class="feature-tag">📷 סורק QR</span>
-            <span class="feature-tag">🔒 WebRTC ישיר</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- SCREEN 2: Welcome / Choose Role -->
-      <section id="welcomeScreen" class="screen hidden">
-        <div class="tactical-card">
-          <div class="user-badge">
-            <div class="user-avatar" id="welcomeAvatar">א</div>
-            <div class="user-details">
-              <span class="user-label">מחובר כעת בתור</span>
-              <h2 class="user-name" id="helloName">משתמש</h2>
-            </div>
-            <button class="btn-text-small" onclick="goBackToName()" title="החלף שם">החלף</button>
-          </div>
-
-          <div class="role-selector">
-            <h3 class="section-title">בחר פעולה:</h3>
-
-            <button onclick="goHost()" class="role-card host-role">
-              <div class="role-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                </svg>
-              </div>
-              <div class="role-info">
-                <strong>פתח רשת קשר חדשה</strong>
-                <span>אני המארח - מקבל קוד חדר וברקוד להפצה</span>
-              </div>
-              <div class="role-arrow">←</div>
-            </button>
-
-            <button onclick="goJoin()" class="role-card join-role">
-              <div class="role-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                  <polyline points="10 17 15 12 10 7"></polyline>
-                  <line x1="15" y1="12" x2="3" y2="12"></line>
-                </svg>
-              </div>
-              <div class="role-info">
-                <strong>הצטרף לרשת קיימת</strong>
-                <span>הכנס קוד ערוץ או סרוק ברקוד QR במצלמה</span>
-              </div>
-              <div class="role-arrow">←</div>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- SCREEN 3: Host Room Screen -->
-      <section id="hostScreen" class="screen hidden">
-        <div class="tactical-card">
-          <div class="screen-header">
-            <span class="badge badge-amber">מארח ערוץ קשר</span>
-            <span class="host-name-tag" id="hName"></span>
-          </div>
-
-          <div class="lcd-display mt-3">
-            <span class="lcd-label">קוד ערוץ (CHANNEL CODE):</span>
-            <div class="lcd-code-row">
-              <div id="roomCode" class="lcd-code">------</div>
-              <button class="btn-copy" onclick="copyRoomCode()" title="העתק קוד" id="copyCodeBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-            </div>
-            <div class="lcd-status-line">
-              <span class="pulsing-dot green"></span>
-              <span id="hostStatusText">יוצר ערוץ קשר מוצפן...</span>
-            </div>
-          </div>
-
-          <!-- QR Code Frame -->
-          <div class="qr-container-outer mt-4">
-            <p class="qr-helper-text">חברים יכולים לסרוק ישירות כדי להצטרף:</p>
-            <div class="qr-box">
-              <div id="qrcode"></div>
-            </div>
-          </div>
-
-          <!-- Quick Share Buttons -->
-          <div class="share-row mt-3">
-            <button class="btn btn-secondary share-btn" onclick="shareViaWebShare()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-              </svg>
-              <span>שתף בוואטסאפ / קישור</span>
-            </button>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="action-grid mt-4">
-            <button onclick="goTalk()" class="btn btn-success btn-large">
-              <span>🚀 כניסה לעמדת השידור</span>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </button>
-            <button onclick="goBackToWelcome()" class="btn btn-outline">חזרה</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- SCREEN 4: Join Room Screen -->
-      <section id="joinScreen" class="screen hidden">
-        <div class="tactical-card">
-          <div class="screen-header">
-            <span class="badge badge-cyan">הצטרפות לערוץ קשר</span>
-            <span class="join-name-tag" id="jName"></span>
-          </div>
-
-          <!-- QR Scanner Trigger -->
-          <div class="scan-section mt-4">
-            <button id="scanToggleBtn" onclick="toggleScanner()" class="btn btn-scan w-full">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7"></rect>
-                <rect x="14" y="3" width="7" height="7"></rect>
-                <rect x="14" y="14" width="7" height="7"></rect>
-                <rect x="3" y="14" width="7" height="7"></rect>
-              </svg>
-              <span id="scanBtnText">📷 סרוק ברקוד QR במצלמה</span>
-            </button>
-            <div id="readerWrapper" class="reader-wrapper hidden mt-3">
-              <div id="reader"></div>
-              <button class="btn btn-sm btn-outline mt-2 w-full" onclick="stopScanner()">סגור מצלמה ✕</button>
-            </div>
-          </div>
-
-          <div class="divider"><span>או הקלד קוד ידנית</span></div>
-
-          <form id="joinForm" onsubmit="event.preventDefault(); doJoin(); return false;">
-            <div class="form-group">
-              <label for="codeInput" class="input-label">קוד ערוץ (6 תווים):</label>
-              <div class="input-wrapper">
-                <input 
-                  id="codeInput" 
-                  type="text" 
-                  placeholder="למשל: ABC123" 
-                  maxlength="10" 
-                  class="code-input text-center" 
-                  autocomplete="off"
-                  autocapitalize="characters"
-                />
-              </div>
-            </div>
-
-            <div class="action-grid mt-4">
-              <button type="button" onclick="doJoin()" id="joinSubmitBtn" class="btn btn-primary btn-large">
-                <span>התחבר לערוץ</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <button type="button" onclick="goBackToWelcome()" class="btn btn-outline">חזרה</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      <!-- SCREEN 5: Tactical Talk / Walkie-Talkie Console -->
-      <section id="talkScreen" class="screen hidden">
-        <div class="radio-console">
-
-          <!-- Top Radio LCD HUD -->
-          <div class="console-lcd">
-            <div class="lcd-top-bar">
-              <span class="lcd-pill channel-pill">
-                <span class="dot-live"></span>
-                ערוץ <span id="cMini">------</span>
-              </span>
-              <span class="lcd-pill user-pill" id="myShow">משתמש</span>
-              <span class="lcd-pill peer-count-pill" id="peerCountBadge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-                <span id="cnt">1</span> ברשת
-              </span>
-            </div>
-
-            <!-- Dynamic Transmission Banner -->
-            <div id="transmissionBanner" class="transmission-banner idle">
-              <div class="trans-indicator">
-                <span class="wave-bar"></span>
-                <span class="wave-bar"></span>
-                <span class="wave-bar"></span>
-                <span class="wave-bar"></span>
-                <span class="wave-bar"></span>
-              </div>
-              <div class="trans-text-box">
-                <span class="trans-sub" id="transSub">מצב ערוץ:</span>
-                <h3 class="trans-title" id="whoTalk">ערוץ פנוי להאזנה</h3>
-              </div>
-            </div>
-
-            <!-- Audio Waveform Canvas Visualizer -->
-            <div class="visualizer-container">
-              <canvas id="visualizerCanvas" width="340" height="42"></canvas>
-            </div>
-          </div>
-
-          <!-- Tactical Mic Controls & Modes -->
-          <div class="mic-mode-toolbar">
-            <div class="mode-toggles">
-              <button id="modePttBtn" class="mode-btn active" onclick="setTalkMode('ptt')" title="החזק לדבר">
-                <span>🔘 החזק (PTT)</span>
-              </button>
-              <button id="modeLockBtn" class="mode-btn" onclick="setTalkMode('lock')" title="לחיצה להפעלה ולחיצה לכיבוי">
-                <span>🔒 נעילת שידור</span>
-              </button>
-            </div>
-            
-            <button id="muteSpeakerBtn" class="icon-btn-compact" onclick="toggleSpeakerMute()" title="השתקת רמקול">
-              <svg id="spkOn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              </svg>
-              <svg id="spkOff" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <line x1="23" y1="9" x2="17" y2="15"></line>
-                <line x1="17" y1="9" x2="23" y2="15"></line>
-              </svg>
-            </button>
-          </div>
-
-          <!-- THE MAIN PUSH-TO-TALK BUTTON -->
-          <div class="ptt-assembly">
-            <div class="ptt-outer-ring" id="pttOuterRing">
-              <div class="ptt-pulse-wave wave-a"></div>
-              <div class="ptt-pulse-wave wave-b"></div>
-              
-              <button 
-                id="pttButton" 
-                class="ptt-btn" 
-                aria-label="Push to talk button"
-                type="button"
-                onmousedown="window.handlePttDown?.(event)"
-                onmouseup="window.handlePttUp?.(event)"
-                ontouchstart="window.handlePttDown?.(event)"
-                ontouchend="window.handlePttUp?.(event)"
-              >
-                <div class="ptt-inner-core">
-                  <div class="ptt-mic-icon">
-                    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                      <line x1="12" y1="19" x2="12" y2="23"></line>
-                      <line x1="8" y1="23" x2="16" y2="23"></line>
-                    </svg>
-                  </div>
-                  <span class="ptt-primary-text" id="pttMainText">לחץ ודבר</span>
-                  <span class="ptt-sub-text" id="pttSubText">החזק כדי לשדר</span>
-                </div>
-              </button>
-            </div>
-            
-            <p class="ptt-keyboard-hint">
-              <kbd>רווח Space</kbd> במקלדת מחזיק את השידור
-            </p>
-          </div>
-
-          <!-- Connected Peers Collapsible Section -->
-          <div class="peers-drawer">
-            <div class="peers-header" onclick="togglePeersDrawer()">
-              <div class="drawer-title">
-                <span class="online-indicator"></span>
-                <span>משתמשים בערוץ הקשר (<span id="drawerCount">1</span>)</span>
-              </div>
-              <span id="drawerChevron" class="drawer-chevron">▼</span>
-            </div>
-            
-            <div id="peersListContainer" class="peers-list-content">
-              <div id="peers" class="peers-grid">
-                <!-- Dynamically populated -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom Tactical Footer -->
-          <div class="console-footer">
-            <button class="footer-btn" onclick="openShareModal()" title="שיתוף והזמנת חברים">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-              </svg>
-              <span>הזמן חברים</span>
-            </button>
-
-            <button class="footer-btn" onclick="openQrModal()" title="הצג ברקוד חדר">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7"></rect>
-                <rect x="14" y="3" width="7" height="7"></rect>
-                <rect x="14" y="14" width="7" height="7"></rect>
-                <rect x="3" y="14" width="7" height="7"></rect>
-              </svg>
-              <span>קוד QR</span>
-            </button>
-
-            <button class="footer-btn disconnect-btn" onclick="confirmDisconnect()" title="התנתק מהערוץ">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-                <line x1="12" y1="2" x2="12" y2="12"></line>
-              </svg>
-              <span>התנתק</span>
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-    </main>
-
-    <!-- Hidden Audio Streams Holder -->
-    <div id="audios" class="hidden-audio-rack"></div>
-
-    <!-- Modals & Overlays -->
-
-    <!-- Info / Instructions Modal -->
-    <div id="infoModal" class="modal-overlay hidden" onclick="closeInfoModal(event)">
-      <div class="modal-box">
-        <div class="modal-header">
-          <h3>📻 מדריך ווקי-טוקי טקטי</h3>
-          <button class="modal-close" onclick="closeInfoModalDirect()">✕</button>
-        </div>
-        <div class="modal-body">
-          <ul class="guide-list">
-            <li><strong>🎙️ דיבור (PTT):</strong> לחץ והחזק את הכפתור האדום או מקש <code>Space</code> כדי לשדר. שחרר כדי לחזור להאזנה.</li>
-            <li><strong>🔒 נעילת שידור:</strong> לחץ על "נעילת שידור" כדי להפעיל דיבור חופשי ללא צורך בהחזקה רציפה של המסך.</li>
-            <li><strong>📶 רשת ישירה:</strong> האודיו עובר בצורה מוצפנת וישירה (P2P WebRTC) בין הטלפונים/מחשבים ללא שרת מאחסן.</li>
-            <li><strong>🔊 סאונד טקטי:</strong> כולל ביפ תחילת שידור, רעש סטטי אמיתי בסיום שידור ורטט טקטי במכשירים תומכים.</li>
-            <li><strong>📱 בטלפונים:</strong> מומלץ להוסיף את הדף למסך הבית (Add to Home Screen) לחוויית אפליקציה מלאה.</li>
-          </ul>
-        </div>
+        <button onclick="goWelcome()" class="btn-action btn-amber">
+          <span>המשך לרשת הקשר ➡️</span>
+        </button>
       </div>
     </div>
 
-    <!-- QR Modal in Talk Screen -->
-    <div id="qrModal" class="modal-overlay hidden" onclick="closeQrModal(event)">
-      <div class="modal-box text-center">
-        <div class="modal-header">
-          <h3>הצטרפות לערוץ <span id="qrModalCode" class="text-amber"></span></h3>
-          <button class="modal-close" onclick="closeQrModalDirect()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="qr-box mx-auto my-3">
-            <div id="modalQrCode"></div>
+    <!-- SCREEN 2: Welcome / Role Selection -->
+    <div id="welcomeScreen" class="screen hidden">
+      <div class="radio-card text-center" style="margin: auto 0; text-align: center;">
+        <p style="color: #94a3b8; font-size: 0.9rem;">שלום <b id="helloName" style="color: var(--amber); font-size: 1.1rem;"></b> 👋</p>
+        <h2 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px;">בחר פעולה:</h2>
+
+        <button onclick="goHost()" class="role-btn">
+          <span class="role-icon">👑</span>
+          <div class="role-info">
+            <strong>אני מארח - יוצר חדר</strong>
+            <span>פותח ערוץ חדש, מקבל קוד וברקוד QR להפצה</span>
           </div>
-          <p class="text-sm text-dim">סרקו כדי להצטרף מיידית לערוץ הקשר</p>
-          <button class="btn btn-primary mt-3 w-full" onclick="copyDirectLink()">
-            העתק קישור ישיר לערוץ 📋
+          <span style="font-size: 1.2rem; margin-right: auto; color: #94a3b8;">←</span>
+        </button>
+
+        <button onclick="goJoin()" class="role-btn">
+          <span class="role-icon">🚪</span>
+          <div class="role-info">
+            <strong>הצטרפות לקבוצה</strong>
+            <span>הכנס קוד ערוץ או סרוק ברקוד של חבר במצלמה</span>
+          </div>
+          <span style="font-size: 1.2rem; margin-right: auto; color: #94a3b8;">←</span>
+        </button>
+
+        <button onclick="goBackToName()" class="btn-action btn-dark" style="margin-top: 18px; font-size: 0.9rem;">
+          החלף שם משתמש
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: Host Screen -->
+    <div id="hostScreen" class="screen hidden">
+      <div class="radio-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--amber);">👑 מארח ערוץ קשר</span>
+          <span id="hName" style="font-size: 0.85rem; color: #cbd5e1;"></span>
+        </div>
+
+        <div class="lcd-screen">
+          <p style="font-size: 0.72rem; color: #64748b; font-family: var(--font-mono); text-align: center;">קוד החדר שלך (CHANNEL CODE):</p>
+          <div id="roomCode" class="lcd-code">------</div>
+          
+          <!-- LIVE 2-PERSON CONNECTION DETECTOR -->
+          <div id="hostPartnerStatus" class="connect-radar waiting">
+            <span class="pulse-dot"></span>
+            <span id="hostPartnerText">ממתין לשותף שיצטרף לקשר... 📡</span>
+          </div>
+        </div>
+
+        <div class="qr-frame">
+          <div id="qrcode"></div>
+        </div>
+
+        <p style="text-align: center; font-size: 0.76rem; color: #94a3b8; margin: 4px 0 10px;">
+          החבר יכול לסרוק במצלמה או להקליד את הקוד
+        </p>
+
+        <button onclick="shareLink()" class="btn-action btn-dark" style="margin-top: 4px;">
+          📤 שתף קישור ישיר בוואטסאפ
+        </button>
+
+        <button onclick="goTalk()" id="btnHostEnter" class="btn-action btn-green" style="margin-top: 10px;">
+          ✅ כנס לעמדת השידור
+        </button>
+
+        <button onclick="goBackToWelcome()" class="btn-action btn-dark" style="margin-top: 6px; font-size: 0.85rem; padding: 10px;">
+          חזרה לתפריט
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: Join Screen -->
+    <div id="joinScreen" class="screen hidden">
+      <div class="radio-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--cyan);">🚪 הצטרפות לקבוצה</span>
+          <span id="jName" style="font-size: 0.85rem; color: #cbd5e1;"></span>
+        </div>
+
+        <button onclick="toggleScanner()" class="btn-action btn-amber" style="margin-top: 4px;">
+          📷 סרוק ברקוד במצלמה
+        </button>
+
+        <div id="readerWrapper" class="hidden" style="margin-top: 10px; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--cyan);">
+          <div id="reader"></div>
+          <button onclick="stopScanner()" class="btn-action btn-dark" style="margin: 6px auto; padding: 8px; width: 95%;">סגור מצלמה ✕</button>
+        </div>
+
+        <div style="display: flex; align-items: center; text-align: center; margin: 16px 0; color: #64748b; font-size: 0.78rem;">
+          <span style="flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1);"></span>
+          <span style="padding: 0 10px;">או הקלד קוד ידנית</span>
+          <span style="flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1);"></span>
+        </div>
+
+        <input 
+          id="codeInput" 
+          placeholder="קוד חדר (6 תווים)" 
+          class="name-input" 
+          maxlength="10"
+          style="letter-spacing: 4px; text-transform: uppercase;"
+          onkeydown="if(event.key==='Enter')doJoin()"
+        />
+
+        <button onclick="doJoin()" class="btn-action btn-green" style="margin-top: 14px;">
+          הצטרף לערוץ 🚀
+        </button>
+
+        <button onclick="goBackToWelcome()" class="btn-action btn-dark" style="margin-top: 8px; font-size: 0.85rem; padding: 10px;">
+          חזרה לתפריט
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: Tactical Talk Console -->
+    <div id="talkScreen" class="screen hidden">
+      <div style="display: flex; flex-direction: column; flex: 1; gap: 8px;">
+
+        <!-- LCD HUD Display -->
+        <div class="talk-hud">
+          <div class="hud-meta-row">
+            <span class="hud-pill active-channel">חדר: <b id="cMini">------</b></span>
+            <span class="hud-pill">אתה: <b id="myShow">משתמש</b></span>
+            <span class="hud-pill paired-count" id="liveCountBadge">
+              👥 <span id="cnt">1</span> מחוברים
+            </span>
+          </div>
+
+          <!-- Dynamic 2-Person Connection Banner -->
+          <div id="partnerBanner" class="connect-radar waiting" style="margin-bottom: 8px;">
+            <span class="pulse-dot"></span>
+            <span id="partnerStatusText">ממתין לשותף שיצטרף לקשר...</span>
+          </div>
+
+          <!-- Voice Transmission Status -->
+          <div id="voiceStatusBox" class="voice-status-box idle">
+            <div class="audio-waves-indicator">
+              <span class="wave-line"></span>
+              <span class="wave-line"></span>
+              <span class="wave-line"></span>
+              <span class="wave-line"></span>
+            </div>
+            <div class="voice-text">
+              <span class="voice-sub" id="voiceSub">מצב ערוץ:</span>
+              <h3 class="voice-who" id="whoTalk">ערוץ פנוי להאזנה</h3>
+            </div>
+          </div>
+
+          <!-- 60FPS Live Audio Waveform Canvas -->
+          <div class="viz-canvas-box">
+            <canvas id="visualizerCanvas" width="360" height="38"></canvas>
+          </div>
+        </div>
+
+        <!-- Mode Switcher -->
+        <div class="mode-switch-row">
+          <div class="mode-pills">
+            <button id="modePtt" class="mode-tab active" onclick="setMode('ptt')">🔘 החזק (PTT)</button>
+            <button id="modeLock" class="mode-tab" onclick="setMode('lock')">🔒 נעילת שידור</button>
+          </div>
+          <button onclick="toggleSpeaker()" id="spkBtn" class="btn-tool" style="width: auto; padding: 4px 10px; font-size: 0.78rem;">
+            🔊 רמקול
           </button>
         </div>
+
+        <!-- THE MAIN PUSH-TO-TALK BUTTON -->
+        <div class="ptt-wrapper">
+          <div class="ptt-housing">
+            <button 
+              id="redBtn"
+              class="ptt-button"
+              type="button"
+              onmousedown="startTalk(event)" 
+              onmouseup="stopTalk(event)"
+              ontouchstart="startTalk(event)" 
+              ontouchend="stopTalk(event)"
+            >
+              <div style="font-size: 2.2rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🎙️</div>
+              <span class="ptt-label" id="pttMainText">לחץ ודבר</span>
+              <span class="ptt-sub" id="pttSubText">החזק כדי לשדר</span>
+            </button>
+          </div>
+          <p class="ptt-hint"><kbd>רווח Space</kbd> במקלדת מחזיק את השידור</p>
+        </div>
+
+        <!-- Connected Peers List -->
+        <div class="peers-box">
+          <div class="peers-box-title">
+            <span>משתתפים בערוץ הקשר (<span id="peerListCount">1</span>)</span>
+            <span id="signalDot" style="color: var(--amber);">● ממתין לשותף</span>
+          </div>
+          <div id="peersList">
+            <!-- Dynamic peers -->
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="footer-bar">
+          <button class="btn-foot" onclick="shareLink()">
+            <span>📤</span>
+            <span>הזמן שותף</span>
+          </button>
+          <button class="btn-foot" onclick="showQrModal()">
+            <span>📷</span>
+            <span>הצג QR</span>
+          </button>
+          <button class="btn-foot danger" onclick="location.reload()">
+            <span>⚫</span>
+            <span>נתק וחזור</span>
+          </button>
+        </div>
+
       </div>
     </div>
 
-    <!-- Toast Notification Overlay -->
-    <div id="toastNotification" class="toast-box hidden">
-      <span id="toastIcon">✨</span>
-      <span id="toastMsg">הודעה</span>
-    </div>
+    <!-- Hidden Audio Streams Rack (Must NOT be display:none for iOS/Android playback!) -->
+    <div id="audios" style="position: fixed; top: -9999px; left: -9999px; width: 1px; height: 1px; opacity: 0.001; pointer-events: none;"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
 
   </div>
 
-  <!-- Modular Walkie-Talkie Architecture -->
-  <script src="assets/js/audio.js"></script>
-  <script src="assets/js/webrtc.js"></script>
-  <script src="assets/js/ui.js"></script>
-  <script src="assets/js/app.js"></script>
+  <script>
+    // State Variables (Direct, reliable WebRTC architecture)
+    let myName = '';
+    let peer = null;
+    let myStream = null;
+    let conns = {};          // peerId -> DataConnection
+    let names = {};          // peerId -> string
+    let roomCode = '';
+    let roomId = '';
+    let talking = false;
+    let talkMode = 'ptt';    // 'ptt' | 'lock'
+    let soundFx = true;
+    let speakerMuted = false;
+    let scanner = null;
+
+    // Web Audio Synthesizer context & visualizer
+    let audioCtx = null;
+    let analyser = null;
+    let animId = null;
+
+    /* ==========================================================================
+       Lifecycle & Startup
+       ========================================================================== */
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('walkie_name');
+      if (saved) {
+        document.getElementById('myName').value = saved;
+      }
+
+      // Check URL parameters for direct join (?join=walkie-ABC123&code=ABC123)
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code') || params.get('room');
+      if (code) {
+        document.getElementById('codeInput').value = code.trim().toUpperCase();
+      }
+
+      // Keyboard spacebar listener
+      let spaceDown = false;
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement?.tagName !== 'INPUT') {
+          e.preventDefault();
+          if (!spaceDown) {
+            spaceDown = true;
+            if (talkMode === 'ptt') startTalk();
+            else talking ? stopTalk() : startTalk();
+          }
+        }
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space' && document.activeElement?.tagName !== 'INPUT') {
+          e.preventDefault();
+          spaceDown = false;
+          if (talkMode === 'ptt') stopTalk();
+        }
+      });
+    });
+
+    /* ==========================================================================
+       Sound Synthesizer (Zero asset dependencies - Web Audio API)
+       ========================================================================== */
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioClass) audioCtx = new AudioClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // PTT Press Chirp (Motorola/Kenwood chirp)
+    function playChirp() {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1150, now);
+        osc.frequency.setValueAtTime(1650, now + 0.035);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+        gain.gain.linearRampToValueAtTime(0, now + 0.075);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } catch (e) {}
+    }
+
+    // PTT Release Squelch + Roger Beep
+    function playRogerBeep() {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // 1. High pip
+        const osc = ctx.createOscillator();
+        const toneGain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1050, now);
+        toneGain.gain.setValueAtTime(0, now);
+        toneGain.gain.linearRampToValueAtTime(0.18, now + 0.005);
+        toneGain.gain.linearRampToValueAtTime(0, now + 0.065);
+        osc.connect(toneGain);
+        toneGain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.07);
+
+        // 2. White noise static burst
+        const bufferSize = ctx.sampleRate * 0.1;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1400, now + 0.04);
+        filter.Q.setValueAtTime(1.8, now + 0.04);
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0, now);
+        noiseGain.gain.setValueAtTime(0.12, now + 0.04);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noise.start(now + 0.04);
+        noise.stop(now + 0.15);
+      } catch (e) {}
+    }
+
+    // Partner Joined Alert Chime (Happy 2-tone)
+    function playConnectChime() {
+      if (!soundFx) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(660, now);
+        osc.frequency.setValueAtTime(990, now + 0.08);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.15, now + 0.01);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      } catch (e) {}
+    }
+
+    function haptic(pattern = [25]) {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(pattern); } catch (e) {}
+      }
+    }
+
+    /* ==========================================================================
+       Navigation & Flow
+       ========================================================================== */
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function goWelcome() {
+      myName = document.getElementById('myName').value.trim();
+      if (!myName) {
+        alert('תכתוב את השם שלך!');
+        return;
+      }
+      localStorage.setItem('walkie_name', myName);
+
+      document.getElementById('helloName').textContent = myName;
+      document.getElementById('hName').textContent = myName;
+      document.getElementById('jName').textContent = myName;
+      document.getElementById('myShow').textContent = myName;
+
+      // Unlock audio on first click
+      getAudioContext();
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('code') || params.get('join')) {
+        goJoin();
+      } else {
+        showScreen('welcomeScreen');
+      }
+    }
+
+    function goBackToName() {
+      showScreen('nameScreen');
+    }
+
+    function goBackToWelcome() {
+      stopScanner();
+      showScreen('welcomeScreen');
+    }
+
+    function genCode() {
+      const l = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let s = '';
+      for (let i = 0; i < 6; i++) s += l[Math.floor(Math.random() * l.length)];
+      return s;
+    }
+
+    /* ==========================================================================
+       Host Logic
+       ========================================================================== */
+
+    function goHost() {
+      showScreen('hostScreen');
+      roomCode = genCode();
+      document.getElementById('roomCode').textContent = roomCode;
+      document.getElementById('cMini').textContent = roomCode;
+      document.getElementById('hostPartnerText').textContent = 'יוצר ערוץ קשר... 📡';
+
+      // Warm up microphone
+      getMic(true);
+
+      try {
+        peer = new Peer('walkie-' + roomCode);
+        peer.on('open', (id) => {
+          roomId = id;
+          document.getElementById('hostPartnerText').textContent = 'ממתין לשותף שיצטרף לקשר... 📡';
+          
+          const link = location.origin + location.pathname + '?join=' + id + '&code=' + roomCode;
+          const qr = document.getElementById('qrcode');
+          qr.innerHTML = '';
+          new QRCode(qr, {
+            text: link,
+            width: 170,
+            height: 170,
+            colorDark: '#090c12',
+            colorLight: '#ffffff'
+          });
+
+          setupPeer();
+        });
+
+        peer.on('error', (err) => {
+          if (err.type === 'unavailable-id') {
+            roomCode = genCode();
+            goHost();
+          } else {
+            document.getElementById('hostPartnerText').textContent = 'מוכן לחיבור מקומי';
+          }
+        });
+      } catch (e) {
+        document.getElementById('hostPartnerText').textContent = 'שגיאת רשת';
+      }
+    }
+
+    /* ==========================================================================
+       Join Logic
+       ========================================================================== */
+
+    function goJoin() {
+      showScreen('joinScreen');
+      getMic(true);
+
+      if (!peer) {
+        try {
+          peer = new Peer();
+          peer.on('open', () => setupPeer());
+        } catch (e) {}
+      }
+    }
+
+    function doJoin() {
+      const code = document.getElementById('codeInput').value.trim().toUpperCase();
+      if (!code) {
+        alert('תכתוב קוד ערוץ!');
+        return;
+      }
+      stopScanner();
+      roomCode = code;
+      document.getElementById('cMini').textContent = code;
+
+      const urlId = new URLSearchParams(location.search).get('join');
+      const target = urlId || ('walkie-' + code);
+
+      showToast('מתחבר לקשר... 📻');
+      connectTo(target);
+
+      setTimeout(() => {
+        goTalk();
+      }, 1100);
+    }
+
+    /* ==========================================================================
+       Core WebRTC Peer Handling
+       ========================================================================== */
+
+    function setupPeer() {
+      if (!peer) return;
+
+      peer.on('connection', (c) => {
+        c.on('open', () => {
+          conns[c.peer] = c;
+          c.on('data', (d) => onData(d, c.peer));
+          c.send({ t: 'name', name: myName });
+          updateConnectionStatus();
+        });
+        c.on('close', () => {
+          delete conns[c.peer];
+          delete names[c.peer];
+          updateConnectionStatus();
+        });
+        c.on('error', () => {
+          delete conns[c.peer];
+          delete names[c.peer];
+          updateConnectionStatus();
+        });
+      });
+
+      peer.on('call', async (c) => {
+        if (!myStream) myStream = await getMic(true);
+        c.answer(myStream);
+        c.on('stream', (s) => addAudio(s, c.peer));
+      });
+    }
+
+    async function getMic(m) {
+      if (myStream && myStream.active && myStream.getAudioTracks().length > 0) {
+        myStream.getAudioTracks()[0].enabled = !m;
+        return myStream;
+      }
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        s.getAudioTracks()[0].enabled = !m;
+        myStream = s;
+        setupVisualizer(s);
+        return s;
+      } catch (e) {
+        alert('נא לאשר גישה למיקרופון בהגדרות הדפדפן!');
+        return null;
+      }
+    }
+
+    function addAudio(s, pid) {
+      if (document.getElementById('a-' + pid)) return;
+      const a = document.createElement('audio');
+      a.id = 'a-' + pid;
+      a.srcObject = s;
+      a.autoplay = true;
+      a.playsInline = true;
+      a.volume = 1.0;
+      a.muted = speakerMuted;
+      document.getElementById('audios').appendChild(a);
+
+      a.play().catch(() => {
+        document.body.addEventListener('click', () => a.play(), { once: true });
+        document.body.addEventListener('touchstart', () => a.play(), { once: true });
+      });
+    }
+
+    function onData(d, from) {
+      if (d.t === 'name') {
+        names[from] = d.name;
+        updateConnectionStatus();
+      }
+      if (d.t === 'talk-s') {
+        const who = d.name || 'השותף';
+        document.getElementById('voiceStatusBox').className = 'voice-status-box receiving';
+        document.getElementById('voiceSub').textContent = 'משדר בערוץ:';
+        document.getElementById('whoTalk').textContent = who + ' 🔊';
+        highlightPeer(from, true);
+        haptic([30]);
+      }
+      if (d.t === 'talk-e') {
+        document.getElementById('voiceStatusBox').className = 'voice-status-box idle';
+        document.getElementById('voiceSub').textContent = 'מצב ערוץ:';
+        document.getElementById('whoTalk').textContent = 'ערוץ פנוי להאזנה';
+        highlightPeer(from, false);
+        playRogerBeep();
+      }
+      if (d.t === 'peers' && Array.isArray(d.peers)) {
+        d.peers.forEach((p) => {
+          if (p !== peer.id && !conns[p]) connectTo(p);
+        });
+      }
+    }
+
+    async function connectTo(id) {
+      if (!id || id === peer?.id || conns[id]) return;
+      if (!myStream) myStream = await getMic(true);
+      if (!myStream) return;
+
+      const c = peer.connect(id);
+      c.on('open', () => {
+        conns[id] = c;
+        c.send({ t: 'name', name: myName });
+        c.on('data', (d) => onData(d, id));
+        broadcast();
+        updateConnectionStatus();
+      });
+      c.on('close', () => {
+        delete conns[id];
+        delete names[id];
+        updateConnectionStatus();
+      });
+
+      const call = peer.call(id, myStream);
+      call.on('stream', (s) => addAudio(s, id));
+    }
+
+    function broadcast() {
+      const all = [peer.id, ...Object.keys(conns)];
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'peers', peers: all }); } catch (e) {}
+      });
+      updateConnectionStatus();
+    }
+
+    /* ==========================================================================
+       LIVE 2-PERSON DETECTOR & CONNECTION STATUS
+       ========================================================================== */
+
+    let wasPaired = false;
+
+    function updateConnectionStatus() {
+      const peerCount = Object.keys(conns).length + 1; // You + Peers
+      const otherPeers = Object.keys(conns);
+
+      // 1. Update Counts
+      document.getElementById('cnt').textContent = peerCount;
+      document.getElementById('liveCountBadge').innerHTML = `👥 <b>${peerCount}</b> מחוברים`;
+      document.getElementById('peerListCount').textContent = peerCount;
+
+      // 2. Check if 2 people are connected ("שיזהה שבאמת יש 2 אנשים מחוברים")
+      const isPaired = peerCount >= 2;
+
+      // Host screen radar banner
+      const hostRadar = document.getElementById('hostPartnerStatus');
+      const hostText = document.getElementById('hostPartnerText');
+      const hostEnterBtn = document.getElementById('btnHostEnter');
+
+      // Talk screen radar banner
+      const partnerBanner = document.getElementById('partnerBanner');
+      const partnerText = document.getElementById('partnerStatusText');
+      const signalDot = document.getElementById('signalDot');
+
+      if (isPaired) {
+        const partnerName = names[otherPeers[0]] || 'שותף';
+        
+        // Host screen state
+        if (hostRadar) {
+          hostRadar.className = 'connect-radar paired';
+          hostText.innerHTML = `🎯 <b>קליטה זוהתה! ${partnerName} התחבר! (${peerCount} בערוץ) ✅</b>`;
+          hostEnterBtn.className = 'btn-action btn-green';
+          hostEnterBtn.innerHTML = `🚀 כנס לדבר עם ${partnerName}!`;
+        }
+
+        // Talk screen state
+        if (partnerBanner) {
+          partnerBanner.className = 'connect-radar paired';
+          partnerText.innerHTML = `🟢 <b>קשר פעיל: מחובר לשותף (${partnerName}) • אות 100%</b>`;
+          signalDot.textContent = `● מחובר ל-${partnerName}`;
+          signalDot.style.color = 'var(--green)';
+        }
+
+        // Play alert once when connection is newly established
+        if (!wasPaired) {
+          wasPaired = true;
+          playConnectChime();
+          haptic([40, 50, 40]);
+          showToast(`קשר נוצר בהצלחה עם ${partnerName}! 📻`);
+        }
+      } else {
+        wasPaired = false;
+
+        // Host screen state
+        if (hostRadar) {
+          hostRadar.className = 'connect-radar waiting';
+          hostText.textContent = 'ממתין לשותף שיצטרף לקשר... 📡 (0 מחוברים)';
+          hostEnterBtn.className = 'btn-action btn-green';
+          hostEnterBtn.textContent = '✅ כנס לעמדת השידור';
+        }
+
+        // Talk screen state
+        if (partnerBanner) {
+          partnerBanner.className = 'connect-radar waiting';
+          partnerText.textContent = 'ממתין לשותף שיצטרף לקוד: ' + roomCode + ' 📡';
+          signalDot.textContent = '● ממתין לשותף';
+          signalDot.style.color = 'var(--amber)';
+        }
+      }
+
+      // Render Peers List
+      renderPeers();
+    }
+
+    function renderPeers() {
+      const list = document.getElementById('peersList');
+      if (!list) return;
+
+      let html = `
+        <div class="peer-item ${talking ? 'talking' : ''}">
+          <span class="peer-name">
+            <span style="color: var(--amber);">●</span> ${myName} (אתה)
+          </span>
+          <span class="peer-status online">${talking ? 'משדר 🎙️' : 'מאזין 👂'}</span>
+        </div>
+      `;
+
+      Object.keys(conns).forEach((id) => {
+        const n = names[id] || `שותף (${id.slice(-4)})`;
+        html += `
+          <div class="peer-item" id="peer-card-${id}">
+            <span class="peer-name">
+              <span style="color: var(--green);">●</span> ${n}
+            </span>
+            <span class="peer-status online" id="peer-tag-${id}">מאזין 👂</span>
+          </div>
+        `;
+      });
+
+      list.innerHTML = html;
+    }
+
+    function highlightPeer(id, isTalking) {
+      const card = document.getElementById('peer-card-' + id);
+      const tag = document.getElementById('peer-tag-' + id);
+      if (card) card.classList.toggle('talking', isTalking);
+      if (tag) tag.textContent = isTalking ? 'משדר 🎙️' : 'מאזין 👂';
+    }
+
+    /* ==========================================================================
+       Talk & PTT Mechanics
+       ========================================================================== */
+
+    function goTalk() {
+      showScreen('talkScreen');
+      updateConnectionStatus();
+      if (!myStream) getMic(true);
+    }
+
+    function setMode(mode) {
+      talkMode = mode;
+      document.getElementById('modePtt').classList.toggle('active', mode === 'ptt');
+      document.getElementById('modeLock').classList.toggle('active', mode === 'lock');
+      document.getElementById('pttSubText').textContent = mode === 'ptt' ? 'החזק כדי לשדר' : 'לחיצה להתחלה/סיום';
+      showToast(mode === 'ptt' ? 'מצב PTT פעיל (החזק לדבר)' : 'מצב נעילת שידור (לחיצה לדיבור)');
+    }
+
+    function startTalk(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (talking) return;
+
+      // Unlock audio context
+      getAudioContext();
+
+      if (talkMode === 'lock' && talking) {
+        stopTalk(e);
+        return;
+      }
+
+      talking = true;
+      if (myStream && myStream.getAudioTracks().length > 0) {
+        myStream.getAudioTracks()[0].enabled = true;
+      }
+
+      playChirp();
+      haptic([35]);
+
+      // Update UI
+      const btn = document.getElementById('redBtn');
+      btn.classList.add('active');
+      document.getElementById('pttMainText').textContent = 'משדר...';
+
+      const box = document.getElementById('voiceStatusBox');
+      box.className = 'voice-status-box transmitting';
+      document.getElementById('voiceSub').textContent = 'משדר עכשיו:';
+      document.getElementById('whoTalk').textContent = myName + ' (אתה) 🎙️';
+
+      renderPeers();
+
+      // Broadcast talk-s to all peers
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'talk-s', name: myName }); } catch (err) {}
+      });
+    }
+
+    function stopTalk(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (!talking) return;
+
+      talking = false;
+      if (myStream && myStream.getAudioTracks().length > 0) {
+        myStream.getAudioTracks()[0].enabled = false;
+      }
+
+      playRogerBeep();
+      haptic([15, 30, 15]);
+
+      // Reset UI
+      const btn = document.getElementById('redBtn');
+      btn.classList.remove('active');
+      document.getElementById('pttMainText').textContent = 'לחץ ודבר';
+
+      const box = document.getElementById('voiceStatusBox');
+      box.className = 'voice-status-box idle';
+      document.getElementById('voiceSub').textContent = 'מצב ערוץ:';
+      document.getElementById('whoTalk').textContent = 'ערוץ פנוי להאזנה';
+
+      renderPeers();
+
+      // Broadcast talk-e to all peers
+      Object.values(conns).forEach((c) => {
+        try { c.send({ t: 'talk-e' }); } catch (err) {}
+      });
+    }
+
+    /* ==========================================================================
+       Live Audio Visualizer Canvas (60 FPS)
+       ========================================================================== */
+
+    function setupVisualizer(stream) {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const source = ctx.createMediaStreamSource(stream);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 64;
+        source.connect(analyser);
+
+        const canvas = document.getElementById('visualizerCanvas');
+        const cCtx = canvas.getContext('2d');
+        const buf = new Uint8Array(32);
+
+        function draw() {
+          animId = requestAnimationFrame(draw);
+          if (talking && analyser) {
+            analyser.getByteFrequencyData(buf);
+          } else {
+            buf.fill(4);
+          }
+
+          cCtx.clearRect(0, 0, canvas.width, canvas.height);
+          const barW = (canvas.width / 32) * 1.5;
+          let x = 0;
+
+          for (let i = 0; i < 32; i++) {
+            const h = Math.max(3, (buf[i] / 255) * canvas.height * 0.9);
+            cCtx.fillStyle = talking ? 'rgba(239, 68, 68, 0.7)' : 'rgba(255, 255, 255, 0.08)';
+            cCtx.fillRect(x, (canvas.height - h) / 2, barW - 1, h);
+            x += barW;
+          }
+        }
+        draw();
+      } catch (e) {}
+    }
+
+    /* ==========================================================================
+       QR Scanner & Sharing Tools
+       ========================================================================== */
+
+    function toggleScanner() {
+      const wrap = document.getElementById('readerWrapper');
+      if (wrap.classList.contains('hidden')) {
+        wrap.classList.remove('hidden');
+        scanner = new Html5Qrcode('reader');
+        scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: 200 },
+          (d) => {
+            stopScanner();
+            try {
+              const u = new URL(d);
+              const id = u.searchParams.get('join');
+              const code = u.searchParams.get('code') || '';
+              if (id) {
+                document.getElementById('codeInput').value = code;
+                document.getElementById('cMini').textContent = code;
+                connectTo(id);
+                setTimeout(() => goTalk(), 1000);
+                return;
+              }
+            } catch (e) {
+              document.getElementById('codeInput').value = d;
+              doJoin();
+            }
+          },
+          () => {}
+        ).catch(() => {
+          alert('שגיאה בגישה למצלמה');
+          stopScanner();
+        });
+      } else {
+        stopScanner();
+      }
+    }
+
+    function stopScanner() {
+      if (scanner) {
+        try { scanner.stop(); scanner.clear(); } catch (e) {}
+        scanner = null;
+      }
+      document.getElementById('readerWrapper')?.classList.add('hidden');
+    }
+
+    function shareLink() {
+      const link = `${location.origin}${location.pathname}?join=walkie-${roomCode}&code=${roomCode}`;
+      if (navigator.share && navigator.canShare && navigator.canShare({ url: link })) {
+        navigator.share({
+          title: 'ווקי-טוקי טקטי',
+          text: `בוא לדבר איתי בקשר! קוד חדר: ${roomCode}`,
+          url: link
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(link).then(() => {
+          showToast('הקישור לקשר הועתק! שלח אותו בוואטסאפ 📋');
+        });
+      }
+    }
+
+    function showQrModal() {
+      const link = `${location.origin}${location.pathname}?join=walkie-${roomCode}&code=${roomCode}`;
+      prompt('העתק את הקישור הישיר לערוץ:', link);
+    }
+
+    function toggleSoundFx() {
+      soundFx = !soundFx;
+      document.getElementById('btnFx').textContent = soundFx ? '🔊' : '🔇';
+      showToast(soundFx ? 'צלילי קשר הופעלו' : 'צלילי קשר הושתקו');
+      if (soundFx) playChirp();
+    }
+
+    function toggleSpeaker() {
+      speakerMuted = !speakerMuted;
+      document.querySelectorAll('#audios audio').forEach(a => a.muted = speakerMuted);
+      document.getElementById('spkBtn').textContent = speakerMuted ? '🔇 מושתק' : '🔊 רמקול';
+      showToast(speakerMuted ? 'רמקול הושתק' : 'רמקול פעיל');
+    }
+
+    function toggleHelp() {
+      alert('📻 ווקי-טוקי טקטי:\n\n1. לחץ והחזק את הכפתור האדום או מקש Space כדי לדבר.\n2. שחרר כדי לחזור להאזנה.\n3. כאשר 2 אנשים מחוברים, החיווי יהפוך לירוק עם חיווי קשר פעיל.\n4. האודיו עובר בצורה ישירה ומוצפנת (WebRTC P2P) מדפדפן לדפדפן.');
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.add('hidden'), 2500);
+    }
+  </script>
 </body>
 </html>
