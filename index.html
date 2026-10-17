@@ -69,6 +69,15 @@ body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
 #redBtn.on{background:radial-gradient(circle at 35% 28%,#86efac,#22c55e 55%,#14532d);color:#03140a;transform:scale(.97);animation:onAir 1.2s ease-out infinite}
 @keyframes onAir{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55),0 25px 60px -10px rgba(34,197,94,.8)}100%{box-shadow:0 0 0 34px rgba(34,197,94,0),0 25px 60px -10px rgba(34,197,94,.8)}}
 
+/* video */
+.tile{position:relative;aspect-ratio:3/4;border-radius:1rem;overflow:hidden;background:#000;border:1px solid var(--line);cursor:pointer;animation:fadeUp .3s ease both}
+.tile:only-child{grid-column:1/-1;aspect-ratio:4/3}
+.tile.big{grid-column:1/-1;aspect-ratio:auto;height:60vh}
+.tile video{width:100%;height:100%;object-fit:cover;background:#000}
+.tile.mirror video{transform:scaleX(-1)}
+.tile span{position:absolute;bottom:.45rem;right:.5rem;font-size:.75rem;font-weight:700;background:rgba(0,0,0,.6);padding:.15rem .55rem;border-radius:999px}
+.btn-on{background:linear-gradient(180deg,#4ade80,#16a34a)!important;color:#04120a;border-color:transparent!important}
+
 /* chat */
 #chatLog{max-height:16rem;overflow-y:auto;scroll-behavior:smooth;display:flex;flex-direction:column;gap:.4rem}
 .msg{max-width:85%;padding:.45rem .75rem;border-radius:1rem;font-size:.92rem;line-height:1.35;word-wrap:break-word;animation:fadeUp .2s ease both;text-align:right}
@@ -146,6 +155,7 @@ body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
 </div>
 <button id="inviteToggle" onclick="document.getElementById('invite').classList.toggle('hidden')" class="hidden btn btn-ghost mt-2 w-full py-2 rounded-xl text-sm">📨 הזמן / הסתר</button>
 
+<div id="videoGrid" class="hidden grid grid-cols-2 gap-2 mt-3"></div>
 <div id="peers" class="mt-3 text-right space-y-2"></div>
 <p id="alone" class="mt-3 text-sm opacity-50">מחכה שמישהו יצטרף...</p>
 
@@ -159,6 +169,11 @@ body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
 <button id="redBtn">🔴<br>לחץ<br>ודבר</button>
 </div>
 <p class="mt-1 opacity-50 text-sm">החזק את הכפתור ודבר · שחרר כדי להקשיב</p>
+<div class="grid grid-cols-2 gap-2 mt-4">
+<button id="camBtn" onclick="toggleVideo()" class="btn btn-ghost py-3 rounded-xl text-sm font-bold">📹 הפעל וידאו</button>
+<button id="openMicBtn" onclick="toggleOpenMic()" class="btn btn-ghost py-3 rounded-xl text-sm font-bold">🎤 מיקרופון פתוח</button>
+</div>
+<button id="flipBtn" onclick="flipCam()" class="hidden btn btn-ghost w-full mt-2 py-2 rounded-xl text-sm">🔄 החלף מצלמה</button>
 <button id="unmuteBtn" onclick="unmuteAll()" class="hidden btn btn-amber mt-4 w-full font-bold py-3 rounded-xl">🔊 לחץ להפעלת השמע</button>
 <p id="micNote" class="hidden mt-3 text-xs text-red-400">אין גישה למיקרופון - אתה רק מקשיב</p>
 
@@ -184,6 +199,7 @@ const MAX=10;
 let myName='', peer=null, myStream=null, micOk=false, isHost=false;
 let hostId='', pin='', link='', joined=false, joinTimer=null;
 let conns={}, calls={}, names={}, lastSeen={}, pending={}, talkers={}, talking=false;
+let blankTrack=null, camTrack=null, videoOn=false, facing='user', openMic=false, remoteStreams={}, peerVideo={};
 let fails=0, lockUntil=0;
 
 function rand(n,abc){const a=new Uint32Array(n); crypto.getRandomValues(a); return [...a].map(x=>abc[x%abc.length]).join('');}
@@ -205,6 +221,7 @@ myStream=ctx.createMediaStreamDestination().stream;
 micOk=false;
 }
 myStream.getAudioTracks().forEach(t=>t.enabled=false);
+blankTrack=makeBlank();
 return myStream;
 }
 
@@ -292,12 +309,21 @@ if(msg.includes('קוד')){$('pinWrap').classList.remove('hidden'); $('pinOk').c
 
 // ---------- connections ----------
 // everyone in the room knows the entry code; every new connection must prove it with 'hello'
-function dial(id){
-if(!id||!peer||id===peer.id||conns[id]||pending[id]) return;
-pending[id]=1; setTimeout(()=>delete pending[id],20000);
+function dial(id,n=0){
+if(!id||!peer||id===peer.id||conns[id]||(pending[id]&&!n)) return;
+pending[id]=1; setTimeout(()=>{if(!conns[id]) delete pending[id];},20000);
 const c=peer.connect(id,{reliable:true});
 c.on('open',()=>c.send({t:'hello',name:myName,pin}));
 bind(c,id);
+// signaling through the PeerJS server sometimes loses a message: retry other members (not the host - the join screen handles that)
+if(id!==hostId) setTimeout(()=>{if(!conns[id]&&n<3&&peer&&!peer.destroyed){try{c.close()}catch(e){} dial(id,n+1);}},8000);
+}
+// media call with retry: if no stream arrives in a few seconds, hang up and call again
+function startCall(id,n=0){
+if(!conns[id]||!peer) return;
+if(calls[id]){try{calls[id].close()}catch(e){}}
+const call=peer.call(id,outStream()); calls[id]=call; handleCall(call,id);
+setTimeout(()=>{if(conns[id]&&calls[id]===call&&!call._got&&n<4) startCall(id,n+1);},6000+n*2000);
 }
 function onIncoming(c){bind(c,c.peer);}
 function bind(c,id){
@@ -321,12 +347,14 @@ if(Object.keys(conns).length+1>=MAX){try{c.send({t:'deny',why:'full'})}catch(e){
 accept(c,id,d.name);
 c.send({t:'ok',name:myName,host:isHost,peers:isHost?Object.keys(conns).filter(x=>x!==id):[]});
 if(talking) c.send({t:'talk',on:true});
+if(videoOn) c.send({t:'video',on:true});
 return;
 }
 if(d.t==='ok'&&!conns[id]){ // our dial was accepted
 accept(c,id,d.name);
-calls[id]=peer.call(id,myStream); handleCall(calls[id],id);
+startCall(id);
 if(talking) c.send({t:'talk',on:true});
+if(videoOn) c.send({t:'video',on:true});
 if(id===hostId&&!joined){
 joined=true; clearTimeout(joinTimer);
 $('roomLabel').textContent='החדר של '+names[id];
@@ -342,17 +370,95 @@ c.close(); return;
 if(conns[id]!==c) return; // ignore anything from connections that did not pass the code
 if(d.t==='talk') setTalker(id,d.on);
 if(d.t==='chat') addMsg(names[id],String(d.text||'').slice(0,300),'them');
+if(d.t==='video'){peerVideo[id]=!!d.on; renderVideo();}
 }
 function onCall(call){
 if(!conns[call.peer]){call.close();return;} // only participants that passed the code
-call.answer(myStream); calls[call.peer]=call; handleCall(call,call.peer);
+const old=calls[call.peer]; if(old&&old!==call){try{old.close()}catch(e){}} // a retried call replaces the stuck one
+call.answer(outStream()); calls[call.peer]=call; handleCall(call,call.peer);
 }
-function handleCall(call,id){call.on('stream',s=>addAudio(s,id));}
+function handleCall(call,id){call.on('stream',s=>{call._got=true; if(calls[id]===call) addAudio(s,id);});}
 function addAudio(s,id){
 let a=$('a-'+id);
 if(!a){a=document.createElement('audio'); a.id='a-'+id; a.autoplay=true; a.playsInline=true; $('audios').appendChild(a);}
+remoteStreams[id]=s;
+if(a.srcObject!==s){ // 'stream' fires once per track (audio + video) - don't reload the same stream
 a.srcObject=s;
-a.play().catch(()=>$('unmuteBtn').classList.remove('hidden'));
+a.play().catch(e=>{if(e.name==='NotAllowedError') $('unmuteBtn').classList.remove('hidden');});
+}
+renderVideo();
+}
+
+// ---------- video ----------
+// every call carries a video slot from the start (a blank placeholder track), so the camera
+// can be switched on/off later with replaceTrack - no reconnect / renegotiation needed
+function makeBlank(){
+try{const c=document.createElement('canvas'); c.width=160; c.height=120; c.getContext('2d').fillRect(0,0,160,120);
+const t=c.captureStream(1).getVideoTracks()[0]; return t||null;}catch(e){return null;}
+}
+function outStream(){
+const v=videoOn&&camTrack?camTrack:blankTrack;
+return new MediaStream([...myStream.getAudioTracks(),...(v?[v]:[])]);
+}
+function videoSender(id){
+const pc=calls[id]&&calls[id].peerConnection; if(!pc) return null;
+const t=pc.getTransceivers().find(x=>x.receiver&&x.receiver.track&&x.receiver.track.kind==='video');
+return t?t.sender:null;
+}
+function pushVideo(){
+const tr=videoOn&&camTrack?camTrack:blankTrack;
+Object.keys(calls).forEach(id=>{const s=videoSender(id); if(s) s.replaceTrack(tr).catch(()=>{});});
+}
+async function openCam(){
+let s;
+try{s=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:640},height:{ideal:480},frameRate:{ideal:15,max:24}}});}
+catch(e){if(e.name==='NotAllowedError') throw e; s=await navigator.mediaDevices.getUserMedia({video:true});} // camera that rejects the settings
+const t=s.getVideoTracks()[0];
+t.addEventListener('ended',()=>{if(camTrack===t&&videoOn) toggleVideo();}); // camera lost (unplugged / taken by another app)
+return t;
+}
+async function toggleVideo(){
+if(videoOn){
+videoOn=false; pushVideo(); if(camTrack){camTrack.stop(); camTrack=null;}
+sendAll({t:'video',on:false}); renderVideo(); return;
+}
+$('camBtn').disabled=true;
+try{camTrack=await openCam();}catch(e){$('camBtn').disabled=false; alert('צריך לאשר גישה למצלמה כדי להפעיל וידאו'); return;}
+$('camBtn').disabled=false;
+videoOn=true; pushVideo(); sendAll({t:'video',on:true}); renderVideo();
+}
+async function flipCam(){
+if(!videoOn) return;
+facing=facing==='user'?'environment':'user';
+try{const old=camTrack; camTrack=await openCam(); pushVideo(); if(old) old.stop(); renderVideo(true);}catch(e){facing=facing==='user'?'environment':'user';}
+}
+let myPreview=null;
+function renderVideo(fresh){
+const g=$('videoGrid'), want=[];
+if(videoOn&&camTrack){if(fresh||!myPreview||myPreview.getVideoTracks()[0]!==camTrack) myPreview=new MediaStream([camTrack]); want.push(['me',myPreview,'אתה']);}
+Object.keys(conns).forEach(id=>{if(peerVideo[id]&&remoteStreams[id]) want.push([id,remoteStreams[id],names[id]]);});
+[...g.children].forEach(t=>{if(!want.some(w=>'v-'+w[0]===t.id)) t.remove();});
+want.forEach(([id,s,label])=>{
+let t=$('v-'+id);
+if(!t){
+t=document.createElement('div'); t.id='v-'+id; t.className='tile';
+const v=document.createElement('video'); v.autoplay=true; v.playsInline=true; v.muted=true; // sound already plays through the audio element
+const l=document.createElement('span'); l.textContent=label;
+t.append(v,l); t.onclick=()=>t.classList.toggle('big'); g.appendChild(t);
+}
+if(id==='me') t.classList.toggle('mirror',facing==='user');
+const v=t.querySelector('video'); if(v.srcObject!==s) v.srcObject=s; v.play().catch(()=>{});
+});
+g.classList.toggle('hidden',!want.length);
+const cb=$('camBtn'); cb.textContent=videoOn?'📹 כבה וידאו':'📹 הפעל וידאו'; cb.classList.toggle('btn-on',videoOn);
+$('flipBtn').classList.toggle('hidden',!videoOn);
+}
+
+// open mic: talk hands-free (for a video call) without holding the red button
+function toggleOpenMic(){
+openMic=!openMic;
+const b=$('openMicBtn'); b.classList.toggle('btn-on',openMic); b.textContent=openMic?'🎤 מיקרופון פתוח ✓':'🎤 מיקרופון פתוח';
+if(openMic) startTalk(); else stopTalk();
 }
 function unmuteAll(){document.querySelectorAll('#audios audio').forEach(a=>a.play().catch(()=>{})); $('unmuteBtn').classList.add('hidden');}
 function drop(id){
@@ -360,7 +466,8 @@ const had=!!conns[id];
 delete conns[id]; delete lastSeen[id]; delete talkers[id];
 if(calls[id]){try{calls[id].close()}catch(e){} delete calls[id];}
 const a=$('a-'+id); if(a) a.remove();
-renderPeers(); renderTalk();
+delete peerVideo[id]; delete remoteStreams[id];
+renderPeers(); renderTalk(); renderVideo();
 if(had) addMsg('','⚪ '+(names[id]||'משתתף')+' כבר לא בחדר','sys');
 }
 // heartbeat: drop anyone silent for 25s (closed app / lost signal)
@@ -412,7 +519,7 @@ const b=$('redBtn'); b.textContent='מדבר...'; b.classList.add('on');
 sendAll({t:'talk',on:true}); renderTalk();
 }
 function stopTalk(){
-if(!talking) return;
+if(!talking||openMic) return; // open mic stays on until it is switched off
 talking=false;
 if(myStream) myStream.getAudioTracks().forEach(t=>t.enabled=false);
 const b=$('redBtn'); b.innerHTML='🔴<br>לחץ<br>ודבר'; b.classList.remove('on');
