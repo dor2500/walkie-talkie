@@ -220,14 +220,29 @@ if(!peer){try{peer=new Peer(); peer.on('open',()=>setupPeer());}catch(e){}}
 function setupPeer(){
 if(!peer) return;
 peer.on('connection',c=>{
-c.on('open',()=>{conns[c.peer]=c; c.on('data',d=>onData(d,c.peer)); c.send({t:'name',name:myName});});
+c.on('open',()=>{conns[c.peer]=c; bindConn(c,c.peer); c.send({t:'name',name:myName}); broadcast();});
 });
 peer.on('call',async c=>{
 if(!myStream) myStream=await getMic(true);
 c.answer(myStream);
 c.on('stream',s=>addAudio(s,c.peer));
 });
+peer.on('error',e=>{if(e.type=='peer-unavailable'&&String(e.message).includes('walkie-')) alert('לא נמצא חדר עם הקוד הזה - בדוק את הקוד');});
 }
+
+// data events + removing a participant who left
+let lastSeen={};
+function bindConn(c,id){
+lastSeen[id]=Date.now();
+c.on('data',d=>{lastSeen[id]=Date.now(); if(!conns[id]&&c.open){conns[id]=c; renderPeers();} onData(d,id);}); // back after a silence -> show again
+c.on('close',()=>dropPeer(id,true)); c.on('error',()=>dropPeer(id,true));
+}
+function dropPeer(id,gone){
+if(gone){delete names[id]; delete lastSeen[id]; let a=document.getElementById('a-'+id); if(a)a.remove();}
+if(!conns[id])return; delete conns[id]; renderPeers();
+}
+// heartbeat: a participant silent for 20s (app closed / no signal) is removed from the list
+setInterval(()=>{let now=Date.now(); Object.keys(conns).forEach(id=>{try{conns[id].send({t:'ping'})}catch(e){} if(now-(lastSeen[id]||now)>20000) dropPeer(id);});},4000);
 
 async function getMic(m){try{let s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getAudioTracks()[0].enabled=!m; return s;}catch(e){alert('תאשר מיקרופון'); return null;}}
 function addAudio(s,pid){if(document.getElementById('a-'+pid))return; let a=document.createElement('audio'); a.id='a-'+pid; a.srcObject=s; a.autoplay=true; document.getElementById('audios').appendChild(a);}
@@ -236,14 +251,17 @@ function onData(d,from){
 if(d.t=='name'){names[from]=d.name; renderPeers();}
 if(d.t=='talk-s'){document.getElementById('nowTalk').classList.remove('hidden'); document.getElementById('whoTalk').textContent=d.name;}
 if(d.t=='talk-e'){document.getElementById('nowTalk').classList.add('hidden');}
-if(d.t=='peers'){d.peers.forEach(p=>{if(p!=peer.id) connectTo(p)});}
+if(d.t=='peers'){d.peers.forEach(p=>{if(p!=peer.id&&peer.id<p) connectTo(p)});} // only one side of each pair dials
 }
 
+let pending={};
 async function connectTo(id){
-if(!id||id==peer.id||conns[id]) return;
+if(!id||!peer||id==peer.id||conns[id]||pending[id]) return;
+if(!peer.open){peer.once('open',()=>connectTo(id)); return;} // wait for the server before dialing
+pending[id]=1; setTimeout(()=>delete pending[id],15000);
+let c=peer.connect(id); c.on('open',()=>{delete pending[id]; conns[id]=c; c.send({t:'name',name:myName}); bindConn(c,id); broadcast();});
 if(!myStream) myStream=await getMic(true);
 if(!myStream) return;
-let c=peer.connect(id); c.on('open',()=>{conns[id]=c; c.send({t:'name',name:myName}); c.on('data',d=>onData(d,id)); broadcast();});
 let call=peer.call(id,myStream); call.on('stream',s=>addAudio(s,id));
 }
 
@@ -253,7 +271,7 @@ let cnt=Object.keys(conns).length+1;
 document.getElementById('cnt').textContent=cnt;
 let div=document.getElementById('peers'); div.innerHTML='';
 Object.keys(conns).forEach(id=>{
-let n=names[id]||id.slice(-4);
+let n=String(names[id]||id.slice(-4)).replace(/[<>&"]/g,'');
 div.innerHTML+=`<div class="bg-zinc-900 p-2 rounded flex justify-between"><span>${n}</span><span class="text-xs opacity-50">${id.slice(-4)}</span></div>`;
 });
 }
@@ -305,6 +323,11 @@ let b=document.getElementById('redBtn'); b.innerHTML='🔴<br>לחץ<br>ודבר
 document.getElementById('nowTalk').classList.add('hidden');
 Object.values(conns).forEach(c=>{try{c.send({t:'talk-e'})}catch{}});
 }
+
+// opened from the QR link with the phone camera: pre-fill the room code
+let qsCode=new URLSearchParams(location.search).get('code'); if(qsCode) document.getElementById('codeInput').value=qsCode;
+// leave cleanly so the others drop you from the list right away
+window.addEventListener('beforeunload',()=>{try{if(peer)peer.destroy()}catch(e){}});
 </script>
 </body>
 </html>
