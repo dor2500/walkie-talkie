@@ -2,8 +2,13 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#09090b">
 <title>ווקי טוקי - לא נתקע</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -13,76 +18,160 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 if(window.caches){caches.keys().then(k=>k.forEach(n=>caches.delete(n))).catch(()=>{});}
 </script>
 <style>
-#redBtn{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-#redBtn.on{background:#22c55e;box-shadow:0 0 0 12px rgba(34,197,94,.25)}
-.talking{outline:2px solid #22c55e}
+:root{--amber:#facc15;--line:rgba(255,255,255,.08);--card:rgba(24,24,27,.72)}
+*{-webkit-tap-highlight-color:transparent}
+html,body{background:#09090b}
+body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
+  background:radial-gradient(60rem 30rem at 50% -10rem,rgba(250,204,21,.13),transparent 70%),radial-gradient(40rem 25rem at 50% 120%,rgba(220,38,38,.10),transparent 70%),#09090b;
+  background-attachment:fixed}
+.wrap{padding-top:max(1.25rem,env(safe-area-inset-top));padding-bottom:max(1.5rem,env(safe-area-inset-bottom))}
+.screen{animation:fadeUp .35s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:1.5rem;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.chip{display:inline-flex;align-items:center;gap:.35rem;background:rgba(39,39,42,.7);border:1px solid var(--line);border-radius:999px;padding:.3rem .75rem;font-size:.8rem;white-space:nowrap}
+.btn{transition:transform .12s ease,filter .15s ease;user-select:none}
+.btn:active{transform:scale(.97)}
+.btn:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.6}
+.btn-amber{background:linear-gradient(180deg,#fde047,#eab308);color:#111;box-shadow:0 10px 30px -10px rgba(250,204,21,.55),inset 0 1px 0 rgba(255,255,255,.5)}
+.btn-green{background:linear-gradient(180deg,#4ade80,#16a34a);color:#04120a;box-shadow:0 10px 24px -12px rgba(34,197,94,.6)}
+.btn-ghost{background:rgba(39,39,42,.7);border:1px solid var(--line)}
+.field{background:rgba(9,9,11,.6);border:2px solid rgba(250,204,21,.3);outline:none;transition:border-color .2s,box-shadow .2s;color:#fff}
+.field:focus{border-color:var(--amber);box-shadow:0 0 0 4px rgba(250,204,21,.15)}
+.field::placeholder{color:rgba(255,255,255,.3)}
+.logo{width:6rem;height:6rem;border-radius:1.8rem;display:grid;place-items:center;font-size:3.1rem;margin-inline:auto;
+  background:linear-gradient(160deg,rgba(250,204,21,.25),rgba(250,204,21,.04));border:1px solid rgba(250,204,21,.3);box-shadow:0 20px 50px -15px rgba(250,204,21,.45)}
+.divider{display:flex;align-items:center;gap:.75rem;color:rgba(255,255,255,.35);font-size:.8rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
+#pinShow{text-shadow:0 0 30px rgba(250,204,21,.35)}
+
+/* participants */
+.peer{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:1rem;padding:.7rem 1rem;animation:fadeUp .3s ease both;transition:border-color .2s,box-shadow .2s}
+.peer .dot{width:.55rem;height:.55rem;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;flex:none}
+.peer.talking{border-color:rgba(34,197,94,.6);box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+
+/* talking now */
+#nowTalk{background:linear-gradient(180deg,rgba(34,197,94,.18),rgba(34,197,94,.06));border:1px solid rgba(34,197,94,.35)}
+.bars{display:flex;gap:4px;align-items:flex-end;height:20px;justify-content:center}
+.bars i{width:4px;border-radius:2px;background:#4ade80;animation:eq 1s ease-in-out infinite}
+.bars i:nth-child(2){animation-delay:-.2s}.bars i:nth-child(3){animation-delay:-.4s}.bars i:nth-child(4){animation-delay:-.6s}.bars i:nth-child(5){animation-delay:-.8s}
+@keyframes eq{0%,100%{height:5px}50%{height:20px}}
+
+/* push-to-talk */
+.ptt-wrap{position:relative;width:14rem;height:14rem;margin:1.5rem auto 0;display:grid;place-items:center}
+.ptt-wrap::before,.ptt-wrap::after{content:'';position:absolute;inset:0;border-radius:50%;border:1px solid rgba(220,38,38,.25)}
+.ptt-wrap::after{inset:.9rem;border-color:rgba(220,38,38,.18)}
+#redBtn{position:relative;width:11rem;height:11rem;border-radius:50%;color:#fff;line-height:1.25;font-size:1.5rem;font-weight:900;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  background:radial-gradient(circle at 35% 28%,#f87171,#dc2626 55%,#7f1d1d);
+  box-shadow:0 25px 60px -15px rgba(220,38,38,.7),inset 0 -10px 24px rgba(0,0,0,.35),inset 0 8px 16px rgba(255,255,255,.22);transition:transform .12s ease}
+#redBtn.on{background:radial-gradient(circle at 35% 28%,#86efac,#22c55e 55%,#14532d);color:#03140a;transform:scale(.97);animation:onAir 1.2s ease-out infinite}
+@keyframes onAir{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55),0 25px 60px -10px rgba(34,197,94,.8)}100%{box-shadow:0 0 0 34px rgba(34,197,94,0),0 25px 60px -10px rgba(34,197,94,.8)}}
+
+/* chat */
+#chatLog{max-height:16rem;overflow-y:auto;scroll-behavior:smooth;display:flex;flex-direction:column;gap:.4rem}
+.msg{max-width:85%;padding:.45rem .75rem;border-radius:1rem;font-size:.92rem;line-height:1.35;word-wrap:break-word;animation:fadeUp .2s ease both;text-align:right}
+.msg b{display:block;font-size:.7rem;font-weight:700;opacity:.65;margin-bottom:.1rem}
+.msg.me{align-self:flex-start;background:linear-gradient(180deg,#fde047,#eab308);color:#111;border-bottom-right-radius:.3rem}
+.msg.them{align-self:flex-end;background:rgba(63,63,70,.7);border:1px solid var(--line);border-bottom-left-radius:.3rem}
+.msg.sys{align-self:center;background:none;font-size:.75rem;opacity:.5;padding:.1rem}
 </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen">
-<div class="max-w-sm mx-auto p-5">
+<body class="text-white">
+<div class="wrap max-w-sm mx-auto px-5">
 
 <!-- home: name + create room -->
-<div id="homeScreen" class="hidden">
-<h1 class="text-4xl font-black text-center mt-10">📻 ווקי-טוקי</h1>
-<p class="text-center opacity-60 mt-2">תכתוב את השם שלך</p>
-<input id="hostName" placeholder="למשל: סבא" maxlength="20" class="w-full mt-8 p-5 rounded-2xl bg-zinc-900 border-2 border-yellow-400 text-center text-xl font-bold">
-<button id="createBtn" onclick="createRoom()" class="w-full mt-4 bg-yellow-400 text-black font-black py-5 rounded-2xl text-xl">👑 צור ווקי-טוקי</button>
-<p id="homeErr" class="text-center text-red-400 text-sm mt-3"></p>
-<div class="mt-10 bg-zinc-900 rounded-2xl p-4">
-<p class="text-sm opacity-60">קיבלת קישור? פשוט תפתח אותו, או תדביק אותו כאן:</p>
-<input id="pasteLink" placeholder="הדבק קישור" dir="ltr" class="w-full mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-center text-sm">
-<button onclick="openPasted()" class="w-full mt-2 bg-zinc-800 border border-zinc-700 py-3 rounded-xl">🚪 פתח קישור</button>
+<div id="homeScreen" class="screen hidden text-center pt-8">
+<div class="logo">📻</div>
+<h1 class="text-4xl font-black mt-5 tracking-tight">ווקי-טוקי</h1>
+<p class="opacity-60 mt-2">לוחצים, מדברים, וכולם שומעים</p>
+<div class="card p-5 mt-7 text-right">
+<label for="hostName" class="text-sm opacity-60 font-medium">תכתוב את השם שלך</label>
+<input id="hostName" placeholder="למשל: סבא" maxlength="20" autocomplete="off" class="field w-full mt-2 p-4 rounded-2xl text-center text-xl font-bold">
+<button id="createBtn" onclick="createRoom()" class="btn btn-amber w-full mt-4 font-black py-4 rounded-2xl text-xl">👑 צור ווקי-טוקי</button>
+<p id="homeErr" class="text-center text-red-400 text-sm mt-3 empty:hidden"></p>
+</div>
+<div class="divider my-6">קיבלת קישור?</div>
+<div class="card p-4">
+<p class="text-sm opacity-60">פשוט תפתח אותו, או תדביק אותו כאן:</p>
+<input id="pasteLink" placeholder="הדבק קישור" dir="ltr" autocomplete="off" class="field w-full mt-3 p-3 rounded-xl text-center text-sm !border">
+<button onclick="openPasted()" class="btn btn-ghost w-full mt-2 py-3 rounded-xl">🚪 פתח קישור</button>
 </div>
 </div>
 
 <!-- join: opened from the invite link -->
-<div id="joinScreen" class="hidden">
-<h1 class="text-4xl font-black text-center mt-10">📻 ווקי-טוקי</h1>
-<p class="text-center opacity-60 mt-2">הוזמנת לחדר! תכתוב שם וקוד כניסה</p>
-<input id="joinName" placeholder="השם שלך" maxlength="20" class="w-full mt-8 p-5 rounded-2xl bg-zinc-900 border-2 border-yellow-400 text-center text-xl font-bold">
-<input id="pinInput" placeholder="קוד כניסה (4 ספרות)" inputmode="numeric" maxlength="4" autocomplete="off" class="w-full mt-3 p-5 rounded-2xl bg-zinc-900 border-2 border-zinc-700 text-center text-3xl font-black tracking-widest">
-<button id="joinBtn" onclick="joinRoom()" class="w-full mt-4 bg-yellow-400 text-black font-black py-5 rounded-2xl text-xl">🚪 הצטרף</button>
-<p id="joinErr" class="text-center text-red-400 text-sm mt-3"></p>
-<button onclick="goHome()" class="w-full mt-8 text-sm opacity-50 underline">או צור חדר משלך</button>
+<div id="joinScreen" class="screen hidden text-center pt-8">
+<div class="logo">📻</div>
+<h1 class="text-3xl font-black mt-5">הוזמנת לווקי-טוקי!</h1>
+<p id="joinHint" class="opacity-60 mt-2">תכתוב שם וקוד כניסה</p>
+<div class="card p-5 mt-7 text-right">
+<label for="joinName" class="text-sm opacity-60 font-medium">השם שלך</label>
+<input id="joinName" placeholder="למשל: נועה" maxlength="20" autocomplete="off" class="field w-full mt-2 p-4 rounded-2xl text-center text-xl font-bold">
+<div id="pinWrap">
+<label for="pinInput" class="block text-sm opacity-60 font-medium mt-4">קוד כניסה</label>
+<input id="pinInput" placeholder="----" inputmode="numeric" maxlength="4" autocomplete="off" dir="ltr" class="field w-full mt-2 p-4 rounded-2xl text-center text-3xl font-black tracking-[.4em]">
+</div>
+<p id="pinOk" class="hidden mt-4 text-sm text-green-400 text-center">🔑 קוד הכניסה כבר בקישור</p>
+<button id="joinBtn" onclick="joinRoom()" class="btn btn-amber w-full mt-4 font-black py-4 rounded-2xl text-xl">🚪 הצטרף</button>
+<p id="joinErr" class="text-center text-red-400 text-sm mt-3 empty:hidden"></p>
+</div>
+<button onclick="goHome()" class="w-full mt-6 text-sm opacity-50 underline">או צור חדר משלך</button>
 </div>
 
 <!-- talk -->
-<div id="talkScreen" class="hidden text-center">
-<p class="bg-zinc-900 p-3 rounded-xl text-sm"><span id="roomLabel"></span> | אתה: <b id="myShow"></b> | <span dir="ltr"><span id="cnt">1</span>/10</span></p>
+<div id="talkScreen" class="screen hidden text-center">
+<div class="card px-4 py-3 flex items-center justify-between gap-2 text-sm">
+<span id="roomLabel" class="font-bold truncate"></span>
+<span class="opacity-70 truncate">אתה: <b id="myShow" class="opacity-100"></b></span>
+<span class="chip">👥 <span dir="ltr"><span id="cnt">1</span>/10</span></span>
+</div>
 
 <!-- invite panel (host only) -->
-<div id="invite" class="hidden mt-3 bg-zinc-900 rounded-2xl p-4 text-right">
+<div id="invite" class="hidden card mt-3 p-4 text-right">
+<div class="flex items-center justify-between">
 <p class="font-bold">📨 הזמן אנשים</p>
-<p class="text-xs opacity-60 mt-1">שלח את הקישור, ותגיד להם את קוד הכניסה בנפרד</p>
-<div class="mt-3 text-center bg-zinc-950 rounded-xl p-3">
-<p class="text-xs opacity-60">קוד כניסה</p>
-<p id="pinShow" class="text-5xl font-black text-yellow-400 tracking-widest" dir="ltr">----</p>
+<span class="chip">קוד: <b id="pinShow" class="text-yellow-400 tracking-widest" dir="ltr">----</b></span>
 </div>
-<input id="linkShow" readonly dir="ltr" class="w-full mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-center" onclick="this.select()">
+<p class="text-xs opacity-60 mt-1">הקוד כבר בתוך הקישור. מי שפותח אותו נכנס ישר</p>
+<input id="linkShow" readonly dir="ltr" class="field w-full mt-3 p-3 rounded-xl text-xs text-center !border" onclick="this.select()">
 <div class="grid grid-cols-3 gap-2 mt-2">
-<button onclick="shareWhatsApp()" class="bg-green-600 py-3 rounded-xl text-sm font-bold">וואטסאפ</button>
-<button onclick="shareLink()" class="bg-yellow-400 text-black py-3 rounded-xl text-sm font-bold">📤 שתף</button>
-<button id="copyBtn" onclick="copyLink()" class="bg-zinc-800 border border-zinc-700 py-3 rounded-xl text-sm">📋 העתק</button>
+<button onclick="shareWhatsApp()" class="btn btn-green py-3 rounded-xl text-sm font-bold">וואטסאפ</button>
+<button onclick="shareLink()" class="btn btn-amber py-3 rounded-xl text-sm font-bold">📤 שתף</button>
+<button id="copyBtn" onclick="copyLink()" class="btn btn-ghost py-3 rounded-xl text-sm">📋 העתק</button>
 </div>
-<button onclick="document.getElementById('qrWrap').classList.toggle('hidden')" class="w-full mt-2 text-sm opacity-60 underline">הצג ברקוד</button>
+<button onclick="document.getElementById('qrWrap').classList.toggle('hidden')" class="w-full mt-3 text-sm opacity-60 underline">הצג / הסתר ברקוד</button>
 <div id="qrWrap" class="hidden bg-white p-3 rounded-2xl w-fit mx-auto mt-2"><div id="qrcode"></div></div>
 <p class="text-xs opacity-50 mt-3">⚠️ השאר את הדף פתוח כל עוד אתה המארח</p>
 </div>
-<button id="inviteToggle" onclick="document.getElementById('invite').classList.toggle('hidden')" class="hidden mt-2 w-full bg-zinc-800 py-2 rounded-xl text-sm">📨 הזמן / הסתר</button>
+<button id="inviteToggle" onclick="document.getElementById('invite').classList.toggle('hidden')" class="hidden btn btn-ghost mt-2 w-full py-2 rounded-xl text-sm">📨 הזמן / הסתר</button>
 
-<div id="peers" class="mt-3 text-right space-y-1"></div>
+<div id="peers" class="mt-3 text-right space-y-2"></div>
 <p id="alone" class="mt-3 text-sm opacity-50">מחכה שמישהו יצטרף...</p>
 
-<div id="nowTalk" class="hidden mt-4 bg-green-900/50 p-3 rounded-xl">
-<p class="text-xs opacity-60">מדבר עכשיו:</p>
+<div id="nowTalk" class="hidden mt-3 p-3 rounded-2xl">
+<div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+<p class="text-xs opacity-70 mt-1">מדבר עכשיו</p>
 <p id="whoTalk" class="text-xl font-black text-green-400"></p>
 </div>
 
-<button id="redBtn" class="mt-8 w-44 h-44 rounded-full bg-red-600 font-black text-2xl transition">🔴<br>לחץ<br>ודבר</button>
-<p class="mt-3 opacity-50 text-sm">החזק את האדום ודבר</p>
-<button id="unmuteBtn" onclick="unmuteAll()" class="hidden mt-4 w-full bg-yellow-400 text-black font-bold py-3 rounded-xl">🔊 לחץ להפעלת השמע</button>
+<div class="ptt-wrap">
+<button id="redBtn">🔴<br>לחץ<br>ודבר</button>
+</div>
+<p class="mt-1 opacity-50 text-sm">החזק את הכפתור ודבר · שחרר כדי להקשיב</p>
+<button id="unmuteBtn" onclick="unmuteAll()" class="hidden btn btn-amber mt-4 w-full font-bold py-3 rounded-xl">🔊 לחץ להפעלת השמע</button>
 <p id="micNote" class="hidden mt-3 text-xs text-red-400">אין גישה למיקרופון - אתה רק מקשיב</p>
-<button onclick="leave()" class="mt-8 w-full bg-zinc-800 py-3 rounded-xl">⚫ נתק ויציאה</button>
+
+<!-- chat -->
+<div class="card mt-6 p-3 text-right">
+<p class="text-sm font-bold opacity-80 px-1">💬 צ'אט</p>
+<div id="chatLog" class="mt-2 px-1"><p id="chatEmpty" class="msg sys">עדיין אין הודעות</p></div>
+<form onsubmit="sendChat();return false" class="flex gap-2 mt-3">
+<input id="chatInput" placeholder="כתוב הודעה..." maxlength="300" autocomplete="off" class="field flex-1 min-w-0 p-3 rounded-xl text-sm !border">
+<button id="chatSend" type="submit" class="btn btn-amber px-4 rounded-xl font-bold">שלח</button>
+</form>
+</div>
+
+<button onclick="leave()" class="btn btn-ghost mt-6 w-full py-3 rounded-2xl">⚫ נתק ויציאה</button>
 </div>
 
 <div id="audios"></div>
@@ -98,7 +187,8 @@ let fails=0, lockUntil=0;
 
 function rand(n,abc){const a=new Uint32Array(n); crypto.getRandomValues(a); return [...a].map(x=>abc[x%abc.length]).join('');}
 function show(id){['homeScreen','joinScreen','talkScreen'].forEach(s=>$(s).classList.toggle('hidden',s!==id));}
-function roomFrom(url){try{return new URLSearchParams(new URL(url).hash.slice(1)).get('r')||'';}catch(e){return '';}}
+function hashParam(url,k){try{return new URLSearchParams(new URL(url).hash.slice(1)).get(k)||'';}catch(e){return '';}}
+function roomFrom(url){return hashParam(url,'r');}
 function clean(s){return String(s||'').replace(/[<>&"']/g,'').trim().slice(0,20);}
 
 // ---------- microphone (muted until the red button is held) ----------
@@ -146,14 +236,14 @@ isHost=false; $('createBtn').disabled=false; $('createBtn').textContent='👑 צ
 $('homeErr').textContent='לא הצלחתי ליצור חדר - בדוק חיבור לאינטרנט ונסה שוב'; return;
 }
 hostId=id; pin=rand(4,'0123456789');
-link=location.origin+location.pathname+'#r='+id;
+link=location.origin+location.pathname+'#r='+id+'&k='+pin; // the entry code travels inside the link (after #, never sent to any server)
 $('pinShow').textContent=pin; $('linkShow').value=link;
 $('qrcode').innerHTML=''; new QRCode($('qrcode'),{text:link,width:180,height:180});
 $('invite').classList.remove('hidden'); $('inviteToggle').classList.remove('hidden');
 $('roomLabel').textContent='👑 החדר שלך';
 enterTalk();
 }
-function inviteText(){return '📻 בוא לווקי-טוקי שלי! תפתח את הקישור ותכניס את קוד הכניסה שאגיד לך:\n'+link;}
+function inviteText(){return '📻 בוא לווקי-טוקי שלי! תפתח את הקישור ותלחץ הצטרף:\n'+link;}
 function shareWhatsApp(){window.open('https://wa.me/?text='+encodeURIComponent(inviteText()),'_blank');}
 async function shareLink(){
 if(navigator.share){try{await navigator.share({title:'ווקי-טוקי',text:inviteText().replace(link,'').trim(),url:link});return;}catch(e){if(e.name==='AbortError')return;}}
@@ -167,11 +257,18 @@ $('copyBtn').textContent='✅ הועתק'; setTimeout(()=>$('copyBtn').textConte
 // ---------- guest ----------
 function goHome(){history.replaceState(null,'',location.pathname); show('homeScreen');}
 function openPasted(){
-const r=roomFrom($('pasteLink').value.trim());
+const v=$('pasteLink').value.trim(), r=roomFrom(v), k=hashParam(v,'k');
 if(!r){$('homeErr').textContent='זה לא נראה כמו קישור הזמנה';return;}
-location.hash='r='+r; openJoin(r);
+location.hash='r='+r+(k?'&k='+k:''); openJoin(r,k);
 }
-function openJoin(r){hostId=r; show('joinScreen'); setTimeout(()=>$('joinName').focus(),50);}
+function openJoin(r,k){
+hostId=r;
+const hasKey=/^\d{4}$/.test(k||'');
+$('pinInput').value=hasKey?k:'';
+$('pinWrap').classList.toggle('hidden',hasKey); $('pinOk').classList.toggle('hidden',!hasKey);
+$('joinHint').textContent=hasKey?'רק תכתוב את השם שלך ותלחץ הצטרף':'תכתוב שם וקוד כניסה';
+show('joinScreen'); setTimeout(()=>$('joinName').focus(),50);
+}
 async function joinRoom(){
 myName=clean($('joinName').value);
 const code=$('pinInput').value.replace(/\D/g,'');
@@ -189,6 +286,7 @@ function failJoin(msg){
 clearTimeout(joinTimer); delete pending[hostId];
 if(conns[hostId]) return;
 $('joinErr').textContent=msg; $('joinBtn').disabled=false; $('joinBtn').textContent='🚪 הצטרף';
+if(msg.includes('קוד')){$('pinWrap').classList.remove('hidden'); $('pinOk').classList.add('hidden'); $('pinInput').value='';}
 }
 
 // ---------- connections ----------
@@ -208,6 +306,7 @@ c.on('error',()=>{if(conns[id]===c) drop(id);});
 }
 function accept(c,id,name){
 delete pending[id]; conns[id]=c; names[id]=clean(name)||'משתתף'; lastSeen[id]=Date.now(); renderPeers();
+addMsg('','🟢 '+names[id]+' בחדר','sys');
 }
 function onData(c,id,d){
 if(!d||typeof d!=='object') return;
@@ -241,6 +340,7 @@ c.close(); return;
 }
 if(conns[id]!==c) return; // ignore anything from connections that did not pass the code
 if(d.t==='talk') setTalker(id,d.on);
+if(d.t==='chat') addMsg(names[id],String(d.text||'').slice(0,300),'them');
 }
 function onCall(call){
 if(!conns[call.peer]){call.close();return;} // only participants that passed the code
@@ -255,10 +355,12 @@ a.play().catch(()=>$('unmuteBtn').classList.remove('hidden'));
 }
 function unmuteAll(){document.querySelectorAll('#audios audio').forEach(a=>a.play().catch(()=>{})); $('unmuteBtn').classList.add('hidden');}
 function drop(id){
+const had=!!conns[id];
 delete conns[id]; delete lastSeen[id]; delete talkers[id];
 if(calls[id]){try{calls[id].close()}catch(e){} delete calls[id];}
 const a=$('a-'+id); if(a) a.remove();
 renderPeers(); renderTalk();
+if(had) addMsg('','⚪ '+(names[id]||'משתתף')+' כבר לא בחדר','sys');
 }
 // heartbeat: drop anyone silent for 25s (closed app / lost signal)
 setInterval(()=>{
@@ -269,13 +371,29 @@ if(now-(lastSeen[id]||now)>25000){try{conns[id].close()}catch(e){} drop(id);}
 });
 },4000);
 
+// ---------- chat ----------
+function sendChat(){
+const i=$('chatInput'), text=i.value.trim().slice(0,300);
+if(!text) return;
+i.value=''; sendAll({t:'chat',text}); addMsg(myName,text,'me');
+}
+function addMsg(from,text,kind){
+const log=$('chatLog'); $('chatEmpty')?.remove();
+const m=document.createElement('div'); m.className='msg '+kind;
+if(kind!=='sys'){const b=document.createElement('b'); b.textContent=kind==='me'?'אתה':from; m.appendChild(b);}
+m.appendChild(document.createTextNode(text)); // textContent only: messages can never inject HTML
+log.appendChild(m);
+while(log.children.length>200) log.firstChild.remove();
+log.scrollTop=log.scrollHeight;
+}
+
 // ---------- UI ----------
 function enterTalk(){$('myShow').textContent=myName; $('micNote').classList.toggle('hidden',micOk); show('talkScreen'); renderPeers();}
 function renderPeers(){
 const ids=Object.keys(conns);
 $('cnt').textContent=ids.length+1;
 $('alone').classList.toggle('hidden',ids.length>0);
-$('peers').innerHTML=ids.map(id=>`<div class="bg-zinc-900 p-3 rounded-xl flex justify-between ${talkers[id]?'talking':''}"><span>🟢 ${names[id]}${id===hostId?' 👑':''}</span><span class="text-xs opacity-50">${talkers[id]?'🎙️ מדבר':''}</span></div>`).join('');
+$('peers').innerHTML=ids.map(id=>`<div class="peer ${talkers[id]?'talking':''}"><span class="flex items-center gap-2 font-medium"><span class="dot"></span>${names[id]}${id===hostId?' 👑':''}</span><span class="text-xs text-green-400">${talkers[id]?'🎙️ מדבר':''}</span></div>`).join('');
 }
 function setTalker(id,on){if(on) talkers[id]=1; else delete talkers[id]; renderPeers(); renderTalk();}
 function renderTalk(){
@@ -315,11 +433,12 @@ document.addEventListener('keyup',e=>{if(e.code==='Space') stopTalk();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden) stopTalk();});
 window.addEventListener('beforeunload',()=>{try{peer&&peer.destroy()}catch(e){}});
 $('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter') joinRoom();});
+$('joinName').addEventListener('keydown',e=>{if(e.key==='Enter') joinRoom();});
 $('hostName').addEventListener('keydown',e=>{if(e.key==='Enter') createRoom();});
 
 // start: invite link -> join screen, otherwise -> home
 const r0=roomFrom(location.href);
-if(r0) openJoin(r0); else show('homeScreen');
+if(r0) openJoin(r0,hashParam(location.href,'k')); else show('homeScreen');
 </script>
 </body>
 </html>
