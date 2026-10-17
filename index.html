@@ -1,31 +1,195 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Taskflow</title>
-  <link rel="stylesheet" href="src/styles.css" />
-  <script>
-    // Apply the theme before first paint to avoid a light flash; key matches src/storage.js.
-    try {
-      document.documentElement.dataset.theme = localStorage.getItem('taskflow.theme')
-        || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    } catch {}
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ווקי טוקי - לא נתקע</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <main class="app">
-    <header>
-      <h1>Taskflow</h1>
-      <button id="theme-toggle" type="button"></button>
-    </header>
-    <form id="new-task">
-      <input id="title" placeholder="What needs to be done?" autocomplete="off" />
-      <button>Add</button>
-    </form>
-    <ul id="tasks"></ul>
-    <footer><span id="count"></span><button id="clear">Clear completed</button></footer>
-  </main>
-  <script type="module" src="src/app.js"></script>
+<body class="bg-zinc-950 text-white min-h-screen">
+<div class="max-w-sm mx-auto p-5">
+
+<div id="nameScreen">
+<h1 class="text-4xl font-black text-center mt-10">📻 ווקי-טוקי</h1>
+<p class="text-center opacity-60 mt-2">תכתוב את השם שלך</p>
+<input id="myName" placeholder="למשל: סבא" class="w-full mt-8 p-5 rounded-2xl bg-zinc-900 border-2 border-yellow-400 text-center text-xl font-bold">
+<button onclick="goWelcome()" class="w-full mt-4 bg-yellow-400 text-black font-black py-4 rounded-2xl text-xl">המשך ➡️</button>
+</div>
+
+<div id="welcome" class="hidden text-center mt-10">
+<p>שלום <b id="hello" class="text-yellow-400"></b> 👋</p>
+<h2 class="text-2xl font-black mt-4">מה אתה רוצה?</h2>
+<button onclick="goHost()" class="w-full mt-6 bg-yellow-400 text-black font-black py-5 rounded-2xl">👑 אני מארח - יוצר חדר</button>
+<button onclick="goJoin()" class="w-full mt-3 bg-zinc-800 border py-5 rounded-2xl">🚪 הצטרפות לקבוצה</button>
+</div>
+
+<div id="hostScreen" class="hidden">
+<h2 class="font-bold">👑 מארח: <span id="hName"></span></h2>
+<div class="bg-zinc-900 rounded-2xl p-4 mt-4 text-center">
+<p class="text-sm opacity-60">קוד החדר שלך:</p>
+<p id="roomCode" class="text-5xl font-black text-yellow-400 tracking-widest mt-2">------</p>
+</div>
+<div class="bg-white p-3 rounded-2xl w-fit mx-auto mt-4"><div id="qrcode"></div></div>
+<p id="status" class="text-center text-xs opacity-40 mt-2"></p>
+<button onclick="goTalk()" class="w-full mt-6 bg-green-500 text-black font-bold py-4 rounded-xl">✅ כנס לדבר</button>
+</div>
+
+<div id="joinScreen" class="hidden">
+<h2 class="font-bold">🚪 מצטרף: <span id="jName"></span></h2>
+<button onclick="doScan()" class="w-full mt-6 bg-yellow-400 text-black font-bold py-4 rounded-xl">📷 סרוק ברקוד</button>
+<div id="reader" class="hidden mt-4"></div>
+<input id="codeInput" placeholder="קוד חדר" class="w-full mt-4 p-4 rounded-xl bg-zinc-900 border text-center text-xl">
+<button onclick="doJoin()" class="w-full mt-3 bg-white text-black font-bold py-4 rounded-xl">הצטרף</button>
+</div>
+
+<div id="talkScreen" class="hidden text-center">
+<p class="bg-zinc-900 p-3 rounded-xl text-sm">חדר: <span id="cMini" class="text-yellow-400 font-bold"></span> | אתה: <span id="myShow"></span> | <span id="cnt">1</span>/10</p>
+<div id="peers" class="mt-3 text-left space-y-1"></div>
+
+<div id="nowTalk" class="hidden mt-4 bg-green-900/50 p-3 rounded-xl">
+<p class="text-xs opacity-60">מדבר עכשיו:</p>
+<p id="whoTalk" class="text-xl font-black text-green-400"></p>
+</div>
+
+<button id="redBtn"
+onmousedown="startTalk()" onmouseup="stopTalk()"
+ontouchstart="startTalk()" ontouchend="stopTalk()"
+class="mt-8 w-44 h-44 rounded-full bg-red-600 font-black text-2xl select-none">🔴<br>לחץ<br>ודבר</button>
+
+<p class="mt-3 opacity-50 text-sm">החזק את האדום ודבר</p>
+<button onclick="location.reload()" class="mt-8 w-full bg-zinc-800 py-3 rounded-xl">⚫ נתק וחזור</button>
+</div>
+
+<div id="audios"></div>
+</div>
+
+<script>
+let myName='', peer, myStream, conns={}, names={}, roomCode='', roomId='', talking=false;
+
+function goWelcome(){
+myName=document.getElementById('myName').value.trim();
+if(!myName){alert('תכתוב שם!');return;}
+document.getElementById('nameScreen').classList.add('hidden');
+document.getElementById('welcome').classList.remove('hidden');
+document.getElementById('hello').textContent=myName;
+document.getElementById('hName').textContent=myName;
+document.getElementById('jName').textContent=myName;
+document.getElementById('myShow').textContent=myName;
+}
+
+function genCode(){const l='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<6;i++)s+=l[Math.floor(Math.random()*l.length)];return s;}
+
+function goHost(){
+document.getElementById('welcome').classList.add('hidden');
+document.getElementById('hostScreen').classList.remove('hidden');
+roomCode=genCode();
+document.getElementById('roomCode').textContent=roomCode;
+document.getElementById('cMini').textContent=roomCode;
+document.getElementById('status').textContent='יוצר חדר...';
+try{
+peer=new Peer('walkie-'+roomCode);
+peer.on('open',id=>{roomId=id; document.getElementById('status').textContent='מוכן!'; let link=location.origin+location.pathname+'?join='+id+'&code='+roomCode; document.getElementById('qrcode').innerHTML=''; new QRCode(document.getElementById('qrcode'),{text:link,width:170,height:170}); setupPeer();});
+peer.on('error',()=>{document.getElementById('status').textContent='מוכן (מצב לא מקוון)';});
+}catch(e){document.getElementById('status').textContent='מוכן';}
+}
+
+function goJoin(){
+document.getElementById('welcome').classList.add('hidden');
+document.getElementById('joinScreen').classList.remove('hidden');
+if(!peer){try{peer=new Peer(); peer.on('open',()=>setupPeer());}catch(e){}}
+}
+
+function setupPeer(){
+if(!peer) return;
+peer.on('connection',c=>{
+c.on('open',()=>{conns[c.peer]=c; c.on('data',d=>onData(d,c.peer)); c.send({t:'name',name:myName});});
+});
+peer.on('call',async c=>{
+if(!myStream) myStream=await getMic(true);
+c.answer(myStream);
+c.on('stream',s=>addAudio(s,c.peer));
+});
+}
+
+async function getMic(m){try{let s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getAudioTracks()[0].enabled=!m; return s;}catch(e){alert('תאשר מיקרופון'); return null;}}
+function addAudio(s,pid){if(document.getElementById('a-'+pid))return; let a=document.createElement('audio'); a.id='a-'+pid; a.srcObject=s; a.autoplay=true; document.getElementById('audios').appendChild(a);}
+
+function onData(d,from){
+if(d.t=='name'){names[from]=d.name; renderPeers();}
+if(d.t=='talk-s'){document.getElementById('nowTalk').classList.remove('hidden'); document.getElementById('whoTalk').textContent=d.name;}
+if(d.t=='talk-e'){document.getElementById('nowTalk').classList.add('hidden');}
+if(d.t=='peers'){d.peers.forEach(p=>{if(p!=peer.id) connectTo(p)});}
+}
+
+async function connectTo(id){
+if(!id||id==peer.id||conns[id]) return;
+if(!myStream) myStream=await getMic(true);
+if(!myStream) return;
+let c=peer.connect(id); c.on('open',()=>{conns[id]=c; c.send({t:'name',name:myName}); c.on('data',d=>onData(d,id)); broadcast();});
+let call=peer.call(id,myStream); call.on('stream',s=>addAudio(s,id));
+}
+
+function broadcast(){let all=[peer.id,...Object.keys(conns)]; Object.values(conns).forEach(c=>{try{c.send({t:'peers',peers:all})}catch{}}); renderPeers();}
+function renderPeers(){
+let cnt=Object.keys(conns).length+1;
+document.getElementById('cnt').textContent=cnt;
+let div=document.getElementById('peers'); div.innerHTML='';
+Object.keys(conns).forEach(id=>{
+let n=names[id]||id.slice(-4);
+div.innerHTML+=`<div class="bg-zinc-900 p-2 rounded flex justify-between"><span>${n}</span><span class="text-xs opacity-50">${id.slice(-4)}</span></div>`;
+});
+}
+
+function goTalk(){
+document.getElementById('hostScreen').classList.add('hidden');
+document.getElementById('talkScreen').classList.remove('hidden');
+renderPeers();
+}
+
+function doJoin(){
+let code=document.getElementById('codeInput').value.trim().toUpperCase();
+if(!code){alert('תכתוב קוד');return;}
+let urlId=new URLSearchParams(location.search).get('join');
+let target=urlId||'walkie-'+code;
+document.getElementById('cMini').textContent=code;
+connectTo(target);
+setTimeout(()=>{document.getElementById('joinScreen').classList.add('hidden');document.getElementById('talkScreen').classList.remove('hidden');renderPeers();},1200);
+}
+
+let scanner=null;
+function doScan(){
+let r=document.getElementById('reader'); r.classList.remove('hidden');
+scanner=new Html5Qrcode('reader');
+scanner.start({facingMode:'environment'},{fps:10,qrbox:200},d=>{
+scanner.stop(); r.classList.add('hidden');
+try{
+let u=new URL(d);
+let id=u.searchParams.get('join');
+let code=u.searchParams.get('code')||'';
+if(id){document.getElementById('codeInput').value=code; document.getElementById('cMini').textContent=code; connectTo(id); setTimeout(()=>{document.getElementById('joinScreen').classList.add('hidden');document.getElementById('talkScreen').classList.remove('hidden');renderPeers();},1000);}
+}catch(e){connectTo(d);}
+},()=>{});
+}
+
+function startTalk(){
+if(talking) return;
+talking=true;
+if(myStream) myStream.getAudioTracks()[0].enabled=true;
+let b=document.getElementById('redBtn'); b.textContent='מדבר...'; b.style.background='#22c55e';
+document.getElementById('nowTalk').classList.remove('hidden');
+document.getElementById('whoTalk').textContent=myName+' (אתה)';
+Object.values(conns).forEach(c=>{try{c.send({t:'talk-s',name:myName})}catch{}});
+}
+function stopTalk(){
+talking=false;
+if(myStream) myStream.getAudioTracks()[0].enabled=false;
+let b=document.getElementById('redBtn'); b.innerHTML='🔴<br>לחץ<br>ודבר'; b.style.background='';
+document.getElementById('nowTalk').classList.add('hidden');
+Object.values(conns).forEach(c=>{try{c.send({t:'talk-e'})}catch{}});
+}
+</script>
 </body>
 </html>
