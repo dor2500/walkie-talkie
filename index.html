@@ -61,7 +61,8 @@ body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
 .ptt-wrap{position:relative;width:14rem;height:14rem;margin:1.5rem auto 0;display:grid;place-items:center}
 .ptt-wrap::before,.ptt-wrap::after{content:'';position:absolute;inset:0;border-radius:50%;border:1px solid rgba(220,38,38,.25)}
 .ptt-wrap::after{inset:.9rem;border-color:rgba(220,38,38,.18)}
-#redBtn{position:relative;width:11rem;height:11rem;border-radius:50%;color:#fff;line-height:1.25;font-size:1.5rem;font-weight:900;
+.ptt-wrap::before,.ptt-wrap::after{pointer-events:none} /* decorative rings must never block the button */
+#redBtn{position:relative;z-index:1;width:11rem;height:11rem;border-radius:50%;color:#fff;line-height:1.25;font-size:1.5rem;font-weight:900;
   touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
   background:radial-gradient(circle at 35% 28%,#f87171,#dc2626 55%,#7f1d1d);
   box-shadow:0 25px 60px -15px rgba(220,38,38,.7),inset 0 -10px 24px rgba(0,0,0,.35),inset 0 8px 16px rgba(255,255,255,.22);transition:transform .12s ease}
