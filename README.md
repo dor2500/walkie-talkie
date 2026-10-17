@@ -15,9 +15,9 @@
 |:---:|:---:|:---:|
 | <img src="screenshots/1-name.png" width="220"> | <img src="screenshots/2-welcome.png" width="220"> | <img src="screenshots/3-host.png" width="220"> |
 
-| 4. הצטרפות | 5. לחץ ודבר |
-|:---:|:---:|
-| <img src="screenshots/4-join.png" width="220"> | <img src="screenshots/5-talk.png" width="220"> |
+| 4. הצטרפות | 5. מישהו מדבר | 6. אתה משדר |
+|:---:|:---:|:---:|
+| <img src="screenshots/4-join.png" width="220"> | <img src="screenshots/5-talk.png" width="220"> | <img src="screenshots/6-on-air.png" width="220"> |
 
 ## 🚀 איך משתמשים
 
