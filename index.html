@@ -46,7 +46,7 @@ body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
 #pinShow{text-shadow:0 0 30px rgba(250,204,21,.35)}
 
 /* participants */
-.peer{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:1rem;padding:.7rem 1rem;animation:fadeUp .3s ease both;transition:border-color .2s,box-shadow .2s}
+.peer{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:1rem;padding:.7rem 1rem;transition:border-color .2s,box-shadow .2s}
 .peer .dot{width:.55rem;height:.55rem;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;flex:none}
 .peer.talking{border-color:rgba(34,197,94,.6);box-shadow:0 0 0 3px rgba(34,197,94,.15)}
 
@@ -196,6 +196,14 @@ body{font-family:'Rubik',system-ui,sans-serif;min-height:100dvh;
 <script>
 const $=id=>document.getElementById(id);
 const MAX=10;
+// ---------- connection servers ----------
+// STUN: finds each device's public address so a direct connection works across the internet (e.g. Israel <-> USA).
+// TURN: relays audio/video when a direct path is blocked (cellular carrier NAT, strict office/hotel networks).
+// PeerJS' built-in TURN servers are offline (their DNS names no longer exist), so a TURN account is added here
+// (free plans: metered.ca, expressturn.com). Format:
+// {urls:['turn:HOST:3478','turn:HOST:3478?transport=tcp','turns:HOST:443?transport=tcp'],username:'USER',credential:'PASS'}
+const TURN=[];
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'},...TURN]};
 let myName='', peer=null, myStream=null, micOk=false, isHost=false;
 let hostId='', pin='', link='', joined=false, joinTimer=null;
 let conns={}, calls={}, names={}, lastSeen={}, pending={}, talkers={}, talking=false;
@@ -228,7 +236,7 @@ return myStream;
 // ---------- peer server ----------
 function makePeer(id){
 return new Promise((res,rej)=>{
-const p=id?new Peer(id):new Peer();
+const p=id?new Peer(id,{config:ICE}):new Peer({config:ICE});
 let opened=false;
 p.on('open',()=>{opened=true; res(p);});
 p.on('error',e=>{if(!opened) rej(e); else onPeerError(e);});
@@ -322,7 +330,7 @@ if(id!==hostId) setTimeout(()=>{if(!conns[id]&&n<3&&peer&&!peer.destroyed){try{c
 function startCall(id,n=0){
 if(!conns[id]||!peer) return;
 if(calls[id]){try{calls[id].close()}catch(e){}}
-const call=peer.call(id,outStream()); calls[id]=call; handleCall(call,id);
+const call=peer.call(id,outStream()); call._mine=true; calls[id]=call; handleCall(call,id);
 setTimeout(()=>{if(conns[id]&&calls[id]===call&&!call._got&&n<4) startCall(id,n+1);},6000+n*2000);
 }
 function onIncoming(c){bind(c,c.peer);}
@@ -377,7 +385,50 @@ if(!conns[call.peer]){call.close();return;} // only participants that passed the
 const old=calls[call.peer]; if(old&&old!==call){try{old.close()}catch(e){}} // a retried call replaces the stuck one
 call.answer(outStream()); calls[call.peer]=call; handleCall(call,call.peer);
 }
-function handleCall(call,id){call.on('stream',s=>{call._got=true; if(calls[id]===call) addAudio(s,id);});}
+function handleCall(call,id){
+call.on('stream',s=>{call._got=true; if(calls[id]===call) addAudio(s,id);});
+const pc=call.peerConnection; if(!pc) return;
+pc.addEventListener('iceconnectionstatechange',()=>{
+if(calls[id]!==call) return;
+const st=pc.iceConnectionState;
+if(st==='connected'||st==='completed') restarts[id]=0;
+if(st==='failed'){
+linkState[id]='failed'; renderPeers();
+// path lost (network changed WiFi<->cellular, or blocked): the side that placed the call calls again
+if(call._mine&&conns[id]&&(restarts[id]=(restarts[id]||0)+1)<=5) setTimeout(()=>{if(calls[id]===call) startCall(id);},1500);
+}
+});
+}
+// connection status per participant: direct / via relay server / connecting / no audio path
+let linkState={}, rtt={}, restarts={}, warned={};
+async function updateLink(id){
+const c=calls[id], pc=c&&c.peerConnection; if(!pc) return;
+const st=pc.iceConnectionState;
+if(st==='failed'){linkState[id]='failed';}
+else if(st!=='connected'&&st!=='completed'){linkState[id]=c._got?'weak':'connecting';}
+else{
+try{
+const s=await pc.getStats(); let pair=null;
+s.forEach(r=>{if(r.type==='transport'&&r.selectedCandidatePairId) pair=s.get(r.selectedCandidatePairId);});
+if(!pair) s.forEach(r=>{if(r.type==='candidate-pair'&&r.nominated&&r.state==='succeeded') pair=r;});
+const lc=pair&&s.get(pair.localCandidateId), rc=pair&&s.get(pair.remoteCandidateId);
+linkState[id]=(lc&&lc.candidateType==='relay')||(rc&&rc.candidateType==='relay')?'relay':'direct';
+rtt[id]=pair&&pair.currentRoundTripTime!=null?Math.round(pair.currentRoundTripTime*1000):null;
+}catch(e){}
+}
+if(linkState[id]==='failed'&&!warned[id]&&!(callRetrying(id))){warned[id]=1; addMsg('','⚠️ אין חיבור קול עם '+names[id]+' - כנראה הרשת חוסמת. נסו רשת אחרת (WiFi / סלולר)','sys');}
+if(linkState[id]==='direct'||linkState[id]==='relay') warned[id]=0;
+}
+function callRetrying(id){return (restarts[id]||0)<=5&&calls[id]&&calls[id]._mine;}
+function linkLabel(id){
+if(talkers[id]) return '<span class="text-green-400">🎙️ מדבר</span>';
+const l=linkState[id], ms=rtt[id]>0?` · ${rtt[id]}ms`:'';
+if(l==='direct') return `<span class="opacity-60">📶 ישיר${ms}</span>`;
+if(l==='relay') return `<span class="opacity-60">🛰️ דרך שרת${ms}</span>`;
+if(l==='weak') return '<span class="text-yellow-400">⚠️ חיבור חלש</span>';
+if(l==='failed') return '<span class="text-red-400">⚠️ אין קול</span>';
+return '<span class="opacity-50">⏳ מתחבר...</span>';
+}
 function addAudio(s,id){
 let a=$('a-'+id);
 if(!a){a=document.createElement('audio'); a.id='a-'+id; a.autoplay=true; a.playsInline=true; $('audios').appendChild(a);}
@@ -466,7 +517,7 @@ const had=!!conns[id];
 delete conns[id]; delete lastSeen[id]; delete talkers[id];
 if(calls[id]){try{calls[id].close()}catch(e){} delete calls[id];}
 const a=$('a-'+id); if(a) a.remove();
-delete peerVideo[id]; delete remoteStreams[id];
+delete peerVideo[id]; delete remoteStreams[id]; delete linkState[id]; delete rtt[id]; delete restarts[id]; delete warned[id];
 renderPeers(); renderTalk(); renderVideo();
 if(had) addMsg('','⚪ '+(names[id]||'משתתף')+' כבר לא בחדר','sys');
 }
@@ -477,7 +528,12 @@ Object.keys(conns).forEach(id=>{
 try{conns[id].send({t:'ping'})}catch(e){}
 if(now-(lastSeen[id]||now)>25000){try{conns[id].close()}catch(e){} drop(id);}
 });
+Promise.all(Object.keys(conns).map(updateLink)).then(renderPeers);
 },4000);
+
+// keep the screen on while in the room (phones otherwise sleep and cut the audio)
+let wakeLock=null;
+async function keepAwake(){try{if('wakeLock' in navigator&&!document.hidden&&!$('talkScreen').classList.contains('hidden')) wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
 
 // ---------- chat ----------
 function sendChat(){
@@ -496,12 +552,14 @@ log.scrollTop=log.scrollHeight;
 }
 
 // ---------- UI ----------
-function enterTalk(){$('myShow').textContent=myName; $('micNote').classList.toggle('hidden',micOk); show('talkScreen'); renderPeers();}
+function enterTalk(){$('myShow').textContent=myName; $('micNote').classList.toggle('hidden',micOk); show('talkScreen'); renderPeers(); keepAwake();}
+let peersHtml='';
 function renderPeers(){
 const ids=Object.keys(conns);
 $('cnt').textContent=ids.length+1;
 $('alone').classList.toggle('hidden',ids.length>0);
-$('peers').innerHTML=ids.map(id=>`<div class="peer ${talkers[id]?'talking':''}"><span class="flex items-center gap-2 font-medium"><span class="dot"></span>${names[id]}${id===hostId?' 👑':''}</span><span class="text-xs text-green-400">${talkers[id]?'🎙️ מדבר':''}</span></div>`).join('');
+const html=ids.map(id=>`<div class="peer ${talkers[id]?'talking':''}"><span class="flex items-center gap-2 font-medium"><span class="dot"></span>${names[id]}${id===hostId?' 👑':''}</span><span class="text-xs">${linkLabel(id)}</span></div>`).join('');
+if(html!==peersHtml){peersHtml=html; $('peers').innerHTML=html;} // only when something changed (no flicker)
 }
 function setTalker(id,on){if(on) talkers[id]=1; else delete talkers[id]; renderPeers(); renderTalk();}
 function renderTalk(){
@@ -533,12 +591,12 @@ if(isHost) location.href=location.pathname; else location.reload();
 
 // push-to-talk: works with mouse, touch and pen; space bar on a computer
 const red=$('redBtn');
-red.addEventListener('pointerdown',e=>{e.preventDefault(); try{red.setPointerCapture(e.pointerId)}catch(_){} startTalk();});
+red.addEventListener('pointerdown',e=>{e.preventDefault(); try{red.setPointerCapture(e.pointerId)}catch(_){} if(!talking&&navigator.vibrate) navigator.vibrate(25); startTalk();});
 ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>red.addEventListener(ev,stopTalk));
 red.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!$('talkScreen').classList.contains('hidden')&&e.target.tagName!=='INPUT'){e.preventDefault(); startTalk();}});
 document.addEventListener('keyup',e=>{if(e.code==='Space') stopTalk();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden) stopTalk();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden) stopTalk(); else keepAwake();});
 window.addEventListener('beforeunload',()=>{try{peer&&peer.destroy()}catch(e){}});
 $('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter') joinRoom();});
 $('joinName').addEventListener('keydown',e=>{if(e.key==='Enter') joinRoom();});
